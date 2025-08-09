@@ -1,2 +1,9 @@
 *.out
 test*
+.vscode/
+*.log
+*.tmp
+.DS_Store
+
+
+build/

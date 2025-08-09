@@ -3,6 +3,8 @@
 
 #ifndef _H_SUPER_VARIABLE
 
+#define _GNU_SOURCE   // for pthread_mutex_consistent
+
 #include <time.h>
 #include <fcntl.h> 
 #include <errno.h>
@@ -17,7 +19,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#define CIRCLE_QUEUE_LENGTH 4  /* must be the power of 2 */
+#define CIRCLE_QUEUE_LENGTH 4  // must be the power of 2 
 
 struct _s_super_variable {
     pthread_mutex_t mtx;

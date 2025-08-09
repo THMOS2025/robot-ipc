@@ -1,7 +1,6 @@
 #include "super_variable.h"
 
-static inline int
-acquire_meta_lock(super_variable p)
+static inline int acquire_meta_lock(super_variable p)
 {
     int result = pthread_mutex_lock(&p->mtx);
     if (result == EOWNERDEAD) {
@@ -15,30 +14,26 @@ acquire_meta_lock(super_variable p)
 }
 
 
-static inline int
-release_meta_lock(super_variable p)
+static inline int release_meta_lock(super_variable p)
 {
     pthread_mutex_unlock(&p->mtx);
     return 0;
 }
 
 
-static inline size_t
-get_full_size(size_t size)
+static inline size_t get_full_size(size_t size)
 {
     return sizeof(struct _s_super_variable) + size * CIRCLE_QUEUE_LENGTH;
 }
 
 
-static inline bool
-is_later_than(const struct timespec a, const struct timespec b) {
+static inline bool is_later_than(const struct timespec a, const struct timespec b) {
     return a.tv_sec > b.tv_sec || \
         (a.tv_sec == b.tv_sec && a.tv_nsec > b.tv_nsec);
 }
 
 
-super_variable
-link_super_variable(const char *name, size_t size)
+super_variable link_super_variable(const char *name, size_t size)
 {
     /* Try to open an existing and create if failed */
     int fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600);
@@ -81,16 +76,14 @@ END:
 }
 
 
-void
-unlink_super_variable(super_variable p, const char *name, size_t size)
+void unlink_super_variable(super_variable p, const char *name, size_t size)
 {
     munmap(p, get_full_size(size));
     shm_unlink(name);
 }
 
 
-int
-read_super_variable(super_variable p, void *buf, size_t size)
+int read_super_variable(super_variable p, void *buf, size_t size)
 {
     int err_code = 0;
 
@@ -114,8 +107,7 @@ read_super_variable(super_variable p, void *buf, size_t size)
 }
 
 
-int
-write_super_variable(super_variable p, void *data, size_t size)
+int write_super_variable(super_variable p, void *data, size_t size)
 {
     int err_code = 0;
     uint8_t tmp;
