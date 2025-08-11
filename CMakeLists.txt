@@ -43,6 +43,10 @@ if(BUILD_EXAMPLE)
     add_executable(writer examples/writer.c)
     target_link_libraries(writer PRIVATE robot_ipc)
 
+    add_executable(delete_shm examples/delete_shm.c)
+    target_link_libraries(delete_shm PRIVATE robot_ipc)
+
     target_include_directories(reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_include_directories(writer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_include_directories(delete_shm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 endif()
