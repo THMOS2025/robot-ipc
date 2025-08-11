@@ -29,7 +29,8 @@ static inline size_t get_full_size(size_t size)
 }
 
 
-static inline bool is_later_than(const struct timespec a, const struct timespec b) {
+static inline bool is_later_than(const struct timespec a, const struct timespec b)
+{
     return a.tv_sec > b.tv_sec || (a.tv_sec == b.tv_sec && a.tv_nsec > b.tv_nsec);
 }
 
@@ -158,7 +159,8 @@ int write_super_variable(super_variable p, void *data, size_t size)
         err_code = -1;   // Warning, the queue is full, so we should not write to it
         goto END_METALOCK;
     }
-    p->b_timestamp[tmp] = p->timestamp;
+    p->b_timestamp[tmp] = ts;
+    p->timestamp = ts;
 
 END_METALOCK: 
     p->qtail = qt; p->qhead = qh;
@@ -171,11 +173,12 @@ END_METALOCK:
     memcpy(p->data + tmp * size, data, size);
 
     // The process which write the data is out of meta lock, so we should acquire it again to write the timestamp
+    /*
     err_code = acquire_meta_lock(p);
     if(err_code) 
         return -2;  // Warning, maybe delay a few seconds
-    p->timestamp = ts;
     release_meta_lock(p);
+    */
 
     return 0;
 }
