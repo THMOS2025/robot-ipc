@@ -20,22 +20,17 @@ double get_time_ms() {
 int main(int argc, char **argv) {
     super_variable x = NULL;
     double start, end, elapsed;
-    char name[64];
 
     // (Optional) Initialize data buffer with zeros
     memset(data, 0, sizeof(data));
+    x = link_super_variable("test", 10485760);
+    // Link (create/attach) a new super_variable with this name
+    if(x == NULL) {
+        printf("Can not create super_variable!\n");
+        return -1;
+    }
 
     for(int i = 0; i < 10000; ++i) {
-        // Generate a random variable name for each loop
-        snprintf(name, sizeof(name), "test_%d_%d", i, rand());
-
-        // Link (create/attach) a new super_variable with this name
-        x = link_super_variable(name, 10485760);
-        if(x == NULL) {
-            printf("Can not create super_variable!\n");
-            return -1;
-        }
-
         // Record start time
         start = get_time_ms();
         // Write the data buffer to the super_variable
@@ -60,6 +55,6 @@ int main(int argc, char **argv) {
         }
 
     }
-    unlink_super_variable(x, name, 10485760);
+    unlink_super_variable(x, "test", 10485760);
     return 0;
 }
