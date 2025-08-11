@@ -102,7 +102,7 @@ void unlink_super_variable(super_variable p, const char *name, size_t size)
 }
 
 
-int read_super_variable(super_variable p, void *buf, size_t size)
+int read_super_variable(super_variable p, void *buf, size_t size, struct timespec *out_timestamp)
 {
     int err_code = 0;
     // Modify to the meta block should be very fast 
@@ -125,12 +125,17 @@ int read_super_variable(super_variable p, void *buf, size_t size)
 
     // mem copying may be costly
     memcpy(buf, p->data + qh * size, size);
-    
+
+    // If the out_timestamp pointer is not NULL, assign the write timestamp to it
+    if (out_timestamp != NULL) {
+        *out_timestamp = p->b_timestamp[qh];
+    }
+
     return 0;
 }
 
 
-int write_super_variable(super_variable p, void *data, size_t size)
+int write_super_variable(super_variable p, void *data, size_t size, struct timespec *out_timestamp)
 {
     int err_code = 0;
     uint8_t tmp;
@@ -181,6 +186,11 @@ END_METALOCK:
     if(err_code) /* we modify the timestamp aggressively to prevent deadlock */
         return -2;  
     release_meta_lock(p);
+
+    // If the out_timestamp pointer is not NULL, assign the write timestamp to it
+    if (out_timestamp != NULL) {
+        *out_timestamp = ts;
+    }
 
     return 0;
 }
