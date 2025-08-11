@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
 #include "super_variable.h"
+#include "error_code.h"
+#include "logger.h"
 
 // Allocate 10MB data buffer
 char data[10485760];
@@ -45,14 +48,8 @@ int main() {
         // Calculate elapsed time in milliseconds
         elapsed = end - start;
 
-        if(ret) {
-            if(ret == -1)
-                printf("Warning: super_variable queue full at i=%d!\n", i);
-            else if(ret == -2)
-                printf("Warning: acquire_meta_lock failed at i=%d!\n", i);
-            else
-                printf("write_super_variable failed at i=%d!\n", i);
-        }
+        robot_log(ret, "");
+        
 
         // Print progress every 1000 loops
         if((i + 1) % 1000 == 0) {

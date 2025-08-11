@@ -6,6 +6,8 @@
 #include <unistd.h>
 
 #include "super_variable.h"
+#include "error_code.h"
+#include "logger.h"
 
 // Calculate the difference between two timespec structs (now - start).
 // The result is stored in the result argument.
@@ -37,9 +39,8 @@ int main() {
         clock_gettime(CLOCK_REALTIME, &now_time);
         
         // Attempt to read the super variable, read_time will store the time data was written
-        if(read_super_variable(x, &tmp, sizeof(int), &read_time)) {
-            printf("read failed !");
-        }
+        int result = read_super_variable(x, &tmp, sizeof(int), &read_time);
+        robot_log(result, "");
         
         if(tmp < 999999) {
             // Calculate the time difference between now_time and read_time

@@ -19,6 +19,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#include "error_code.h"
+
 #define CIRCLE_QUEUE_LENGTH 4  // must be the power of 2 
 
 struct _s_super_variable {

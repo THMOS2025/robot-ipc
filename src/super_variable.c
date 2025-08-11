@@ -108,7 +108,7 @@ int read_super_variable(super_variable p, void *buf, size_t size, struct timespe
     // Modify to the meta block should be very fast 
     err_code = acquire_meta_lock(p);
     if(err_code) 
-        return err_code;
+        return ERR_SHM_AQMETALOCK;
 
     uint8_t qh = p->qhead, qt = p->qtail;
     // Compare the timestamp to find the latest data
@@ -121,7 +121,7 @@ int read_super_variable(super_variable p, void *buf, size_t size, struct timespe
     release_meta_lock(p);
     
     if(qh == qt) 
-        return -1;  // Nothing to read
+        return WARN_SHM_NOREAD;  // Nothing to read
 
     // mem copying may be costly
     memcpy(buf, p->data + qh * size, size);
@@ -146,7 +146,7 @@ int write_super_variable(super_variable p, void *data, size_t size, struct times
     // Try to get a free buffer 
     err_code = acquire_meta_lock(p);
     if(err_code) 
-        return err_code;  // We haven't acquire a lock here, so just return is ok
+        return ERR_SHM_AQMETALOCK;  // We haven't acquire a lock here, so just return is ok
 
     uint8_t qh = p->qhead, qt = p->qtail;
     if(is_later_than(p->timestamp, ts)) { // Just do nothing if not the lastest 
@@ -184,7 +184,7 @@ END_METALOCK:
     err_code = acquire_meta_lock(p);
     p->timestamp = ts;
     if(err_code) /* we modify the timestamp aggressively to prevent deadlock */
-        return -2;  
+        return ERR_SHM_NOWRITETIME;  
     release_meta_lock(p);
 
     // If the out_timestamp pointer is not NULL, assign the write timestamp to it
