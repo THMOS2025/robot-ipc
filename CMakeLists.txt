@@ -11,3 +11,15 @@ target_link_libraries(robot_ipc PUBLIC pthread)
 
 # C99
 target_compile_features(robot_ipc PUBLIC c_std_99)
+
+
+
+# examples
+add_executable(reader examples/reader.c)
+target_link_libraries(reader PRIVATE robot_ipc)
+
+add_executable(writer examples/writer.c)
+target_link_libraries(writer PRIVATE robot_ipc)
+
+target_include_directories(reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(writer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
