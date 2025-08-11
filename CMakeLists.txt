@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(robot_ipc C)
 
 option(BUILD_EXAMPLE "Build the test suite" ON)
-option(DEBUG_BUILD "Enable debug flags and symbols" ON)
+option(DEBUG_BUILD "Enable debug flags and symbols" OFF)
 
 file(GLOB SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 

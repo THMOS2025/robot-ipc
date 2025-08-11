@@ -54,7 +54,7 @@ super_variable link_super_variable(const char *name, size_t size)
             goto END;
     }
 
-    // Change the size of the shared memory object(file) to the required size, -1 returns an error
+    // Change the size of the shared memory object(file) to the required size
     if(ftruncate(fd, get_full_size(size)) == -1)
         goto END;
     
@@ -76,7 +76,8 @@ super_variable link_super_variable(const char *name, size_t size)
         pthread_mutexattr_t attr;
         pthread_mutexattr_init(&attr);
         pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-        pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);   // robust mutex, can recover from deadlock
+        /* Robust mutex can dealing with process being killed */
+        pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
         pthread_mutex_init(&p->mtx, &attr);
         pthread_mutexattr_destroy(&attr);
     }
@@ -111,7 +112,8 @@ int read_super_variable(super_variable p, void *buf, size_t size)
 
     uint8_t qh = p->qhead, qt = p->qtail;
     // Compare the timestamp to find the latest data
-    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, sizeof(struct timespec))){
+    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, \
+                sizeof(struct timespec))){
         qh = ((qh + 1) & (CIRCLE_QUEUE_LENGTH - 1)); 
     }
 
@@ -147,7 +149,8 @@ int write_super_variable(super_variable p, void *data, size_t size)
         goto END_METALOCK;
     }
     // Find the lastest data in the circle queue
-    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, sizeof(struct timespec))){
+    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, \
+                sizeof(struct timespec))){
         qh = ((qh + 1) & (CIRCLE_QUEUE_LENGTH - 1)); 
     }
 
@@ -160,7 +163,6 @@ int write_super_variable(super_variable p, void *data, size_t size)
         goto END_METALOCK;
     }
     p->b_timestamp[tmp] = ts;
-    p->timestamp = ts;
 
 END_METALOCK: 
     p->qtail = qt; p->qhead = qh;
@@ -172,13 +174,13 @@ END_METALOCK:
     // The process which get the meta lock can write to the data block
     memcpy(p->data + tmp * size, data, size);
 
-    // The process which write the data is out of meta lock, so we should acquire it again to write the timestamp
-    /*
+    // The process which write the data is out of meta lock, 
+    // so we should acquire it again to write the timestamp
     err_code = acquire_meta_lock(p);
-    if(err_code) 
-        return -2;  // Warning, maybe delay a few seconds
+    p->timestamp = ts;
+    if(err_code) /* we modify the timestamp aggressively to prevent deadlock */
+        return -2;  
     release_meta_lock(p);
-    */
 
     return 0;
 }
