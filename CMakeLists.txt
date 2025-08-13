@@ -37,12 +37,27 @@ endif()
 
 # examples
 if(BUILD_EXAMPLE)
-    add_executable(reader examples/reader.c)
-    target_link_libraries(reader PRIVATE robot_ipc)
+    add_executable(shm_reader tests/shm_reader.c)
+    target_link_libraries(shm_reader PRIVATE robot_ipc)
 
-    add_executable(writer examples/writer.c)
-    target_link_libraries(writer PRIVATE robot_ipc)
+    add_executable(shm_writer tests/shm_writer.c)
+    target_link_libraries(shm_writer PRIVATE robot_ipc)
 
-    target_include_directories(reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_include_directories(writer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    # Add warnings only for this target
+    if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(shm_reader PRIVATE -Wall -Wextra -Wpedantic -g)
+        target_compile_options(shm_writer PRIVATE -Wall -Wextra -Wpedantic -g)
+    elseif(MSVC)
+        target_compile_options(shm_reader PRIVATE /W4 /Zi)
+        target_compile_options(shm_writer PRIVATE /W4 /Zi)
+    endif()
+
+
+
+    add_executable(delete_shm examples/delete_shm.c)
+    target_link_libraries(delete_shm PRIVATE robot_ipc)
+
+    target_include_directories(shm_reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_include_directories(shm_writer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_include_directories(delete_shm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 endif()

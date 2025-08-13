@@ -1,5 +1,4 @@
 *.out
-test*
 .vscode/
 *.log
 *.tmp
