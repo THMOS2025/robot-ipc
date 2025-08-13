@@ -1,4 +1,28 @@
+#include <time.h>
+#include <fcntl.h> 
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <pthread.h>
+#include <stdbool.h>
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+
 #include "super_variable.h"
+
+#define _GNU_SOURCE   // for pthread_mutex_consistent
+
+struct _s_super_variable {
+    pthread_mutex_t mtx;
+    uint8_t qhead, qtail;
+    struct timespec timestamp;
+    struct timespec b_timestamp[CIRCLE_QUEUE_LENGTH];
+    uint8_t data[];
+};
 
 static inline int acquire_meta_lock(super_variable p)
 {
@@ -183,4 +207,11 @@ END_METALOCK:
     release_meta_lock(p);
 
     return 0;
+}
+
+
+struct timespec
+get_super_variable_timestamp(super_variable p)
+{
+    return p->timestamp;
 }
