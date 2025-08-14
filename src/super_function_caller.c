@@ -1,5 +1,14 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "super_function.h"
+#include <unistd.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include "super_function_caller.h"
 
 struct _s_super_function_caller {
     int req_id, res_id;
@@ -16,7 +25,7 @@ _try_to_open_pipe(const char *name)
     }
 
     /* Then open it */
-    return open(FIFO_PATH, O_RDWR);
+    return open(name, O_RDWR);
 }
 
 
@@ -27,7 +36,7 @@ link_super_function(const char *name)
     super_function_caller p = malloc(sizeof(struct _s_super_function_caller));
     
     /* connect to the request pipe */
-    sprintf(name_buf, "%s_req", name);
+    sprintf(name_buf, "/tmp/THMOS/%s_req", name);
     p->req_id = _try_to_open_pipe(name_buf);
 
     /* connect to the response pipe */
@@ -61,7 +70,7 @@ call_super_function(super_function_caller p,
         void *args, size_t args_sz, \
         void *ret_buf)
 {
-    write(p->req_id, args_sz, sizeof(size_t));
+    write(p->req_id, &args_sz, sizeof(size_t));
     write(p->req_id, args, args_sz);
     static ssize_t ret;
     read(p->res_id, &ret, sizeof(size_t));

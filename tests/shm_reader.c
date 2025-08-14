@@ -6,7 +6,6 @@
 #include <unistd.h>
 
 #include "super_variable.h"
-#include "error_code.h"
 #include "logger.h"
 
 // Calculate the difference between two timespec structs (now - start).

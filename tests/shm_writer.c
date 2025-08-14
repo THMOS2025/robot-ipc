@@ -6,7 +6,6 @@
 #include <time.h>
 
 #include "super_variable.h"
-#include "error_code.h"
 #include "logger.h"
 
 // Allocate 10MB data buffer
