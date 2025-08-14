@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "super_function_caller.h"
+#include "constant.h"
 
 struct _s_super_function_caller {
     int req_id, res_id;
@@ -21,10 +22,10 @@ _try_to_open_pipe(const char *name)
     /* Try to create first, then open it if already exists */
     if (mkfifo(name, 0600) == -1) {
         if (errno != EEXIST) /* other error rather than EEXIST */
-            return -1;
+            return ERR_PIPE_REQ;
     }
 
-    /* Then open it */
+    /* Then open it, return ID */
     return open(name, O_RDWR);
 }
 
@@ -58,12 +59,17 @@ int
 unlink_super_function(super_function_caller p)
 {
     int ret = 0;
+
     ret = close(p->req_id);
-    if(ret) return ret;
+    if(ret) 
+        return ERR_PIPE_CLOSE;
+
     ret = close(p->res_id);
-    if(ret) return ret;
+    if(ret) 
+        return ERR_PIPE_CLOSE;
+
     free(p);
-    return 0;
+    return ROBOT_OK;
 }
 
 

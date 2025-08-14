@@ -1,3 +1,5 @@
+#define _GNU_SOURCE    // for vscode to recognize variables
+
 #include <time.h>
 #include <fcntl.h> 
 #include <errno.h>
