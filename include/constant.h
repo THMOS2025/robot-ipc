@@ -29,12 +29,24 @@
  * global arguments *
  ********************/
 
+/* The max length of paths and names */
+#define NAME_MAX_LENGTH 256
+
 /* Super variables use shared memory as backend implement.
  * To avoid directly locking the whole block, we use a queue
  * to manage multiple block, which allows multiple IO at the 
  * same time. See producer-consumer problem for help.
  * To accelerate modulo operation, this must be the power of 2. */
 #define CIRCLE_QUEUE_LENGTH 4 
+
+/* Super funtion prefix in pipe */
+#define PIPE_NAME_PREFIX "/tmp/robot_ipc/"
+
+/* Whether allow deleting functions from a dispatcher */
+#define ALLOW_DELETE_FUNCTION_FROM_DISPATCHER 0
+
+/* Maximum number of epoll events in a single query */
+#define MAX_EPOLL_EVENTS 16
 
 
 #endif // ROBOT_IPC_CODES_H

@@ -36,14 +36,16 @@ link_super_function(const char *name)
     super_function_caller p = malloc(sizeof(struct _s_super_function_caller));
     
     /* connect to the request pipe */
-    sprintf(name_buf, "/tmp/THMOS/%s_req", name);
+    sprintf(name_buf, PIPE_NAME_PREFIX "%s_req", name);
     p->req_id = _try_to_open_pipe(name_buf);
 
     /* connect to the response pipe */
-    sprintf(name_buf, "%s_res", name);
+    sprintf(name_buf, PIPE_NAME_PREFIX "%s_res", name);
     p->res_id = _try_to_open_pipe(name_buf);
 
-    if(p->req_id == -1 || p->res_id == -1) { /* indicate a failed operation */
+    if(p->req_id < 0 || p->res_id < 0) { /* indicate a failed operation */
+        if(p->req_id > 0) close(p->req_id);
+        if(p->res_id > 0) close(p->res_id);
         free(p);
         return NULL;
     }
@@ -65,16 +67,21 @@ unlink_super_function(super_function_caller p)
 }
 
 
-ssize_t 
+int
 call_super_function(super_function_caller p,
-        void *args, size_t args_sz, \
-        void *ret_buf)
+        void *args, size_t args_sz)
 {
     write(p->req_id, &args_sz, sizeof(size_t));
     write(p->req_id, args, args_sz);
-    static ssize_t ret;
-    read(p->res_id, &ret, sizeof(size_t));
-    read(p->res_id, ret_buf, ret);
-    return ret;
+    return 0;
 }
 
+
+ssize_t
+get_response_super_function(super_function_caller p, void *ret_buf)
+{
+    size_t ret;
+    read(p->res_id, &ret, sizeof(size_t));
+    read(p->res_id, ret_buf, ret);
+    return (ssize_t)ret;
+}
