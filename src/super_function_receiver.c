@@ -1,8 +1,15 @@
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
+#include <stdbool.h>
 
+#include <sys/stat.h>
 #include <sys/epoll.h>
+#include <sys/types.h>
 
 #include "super_function_receiver.h"
 
@@ -82,16 +89,16 @@ attach_super_function(const char *name, \
     int err_code = 0;
     struct _s_super_function_list_node *p;
     p = malloc(sizeof(struct _s_super_function_list_node));
-    p->req_id = p->res_id = 0;
+    p->req_fd = p->res_fd = 0;
     p->foo = foo;
 
     /* open the pipes first */
     static char name_buf[NAME_MAX_LENGTH];
     sprintf(name_buf, PIPE_NAME_PREFIX "%s_req", name);
-    if((p->req_fd = _try_to_open(name_buf)) < 0)
+    if((p->req_fd = _try_to_open_pipe(name_buf)) < 0)
         EXIT_FAILED(-1); /* can not open the request pipe */
     sprintf(name_buf, PIPE_NAME_PREFIX "%s_res", name);
-    if((p->res_fd = _try_to_open(name_buf)) < 0)
+    if((p->res_fd = _try_to_open_pipe(name_buf)) < 0)
         EXIT_FAILED(-1); /* can not open the request pipe */
 
     /* then add this node on the chain */
@@ -128,7 +135,7 @@ detach_super_function(super_function foo, super_function_dispatcher dispatcher)
      *        |    *nxt=B
      *        *prev=A->nxt, **prev=B
      */
-    struct _s_super_function_list_node **prev = &dispatch->head;
+    struct _s_super_function_list_node **prev = &dispatcher->head;
     for(struct _s_super_function_list_node *tmp = dispatcher->head->nxt; 
             tmp; prev = &tmp->nxt, tmp = tmp->nxt) {
         if(tmp->foo == foo) {
@@ -170,7 +177,7 @@ __super_function_dispatcher(void *arg)
     ssize_t bytes_read;
 
     while(true) {
-        int nfds = epoll_wait(p->epoll_fd, events, MAX_EVENTS, -1);
+        int nfds = epoll_wait(p->epoll_fd, events, MAX_EPOLL_EVENTS, -1);
         if (nfds == -1) {
             /* an error occur, but we have no time to handle it. */
             continue; 
@@ -209,4 +216,4 @@ __super_function_dispatcher(void *arg)
 }
 
  
-#undef EXIT_FAILED(x)
+#undef EXIT_FAILED

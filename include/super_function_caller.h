@@ -15,7 +15,7 @@ int unlink_super_function(super_function_caller p);
 /* Notice: this function will block until the remote return. 
  * This api return the size of returned data from remote, and -1 if failed. */
 int call_super_function(super_function_caller p, \
-        void* args, size_t args_sz, /* args and sizeof args */);
+        void* args, size_t args_sz /* args and sizeof args */);
 ssize_t get_response_super_function(super_function_caller p, void *ret_buf);
 
 #endif 

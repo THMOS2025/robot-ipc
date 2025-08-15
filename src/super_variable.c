@@ -16,8 +16,6 @@
 
 #include "super_variable.h"
 
-#define _GNU_SOURCE   // for pthread_mutex_consistent
-
 struct _s_super_variable {
     pthread_mutex_t mtx;
     uint8_t qhead, qtail;

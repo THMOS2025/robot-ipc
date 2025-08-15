@@ -5,11 +5,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include "super_function_caller.h"
-#include "constant.h"
+
 
 struct _s_super_function_caller {
     int req_id, res_id;

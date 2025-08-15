@@ -1,19 +1,22 @@
 cmake_minimum_required(VERSION 3.10)
 project(robot_ipc C)
 
-option(BUILD_EXAMPLE "Build the test suite" ON)
+
+option(BUILD_EXAMPLE "Build the examples" ON)
 option(DEBUG_BUILD "Enable debug flags and symbols" OFF)
 
+# multi-thread building
+if(NOT DEFINED CMAKE_BUILD_PARALLEL_LEVEL)
+    set(CMAKE_BUILD_PARALLEL_LEVEL 8)
+endif()
+
+
 file(GLOB SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
-
 add_library(robot_ipc SHARED ${SRC_FILES})
-
 target_include_directories(robot_ipc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
 target_link_libraries(robot_ipc PUBLIC pthread)
-
-# C99
 target_compile_features(robot_ipc PUBLIC c_std_99)
+
 
 if(DEBUG_BUILD)
     # If the switch is ON, set the build type to Debug
@@ -35,29 +38,6 @@ else()
 endif()
 
 
-# examples
 if(BUILD_EXAMPLE)
-    add_executable(shm_reader tests/shm_reader.c)
-    target_link_libraries(shm_reader PRIVATE robot_ipc)
-
-    add_executable(shm_writer tests/shm_writer.c)
-    target_link_libraries(shm_writer PRIVATE robot_ipc)
-
-    # Add warnings only for this target
-    if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(shm_reader PRIVATE -Wall -Wextra -Wpedantic -g)
-        target_compile_options(shm_writer PRIVATE -Wall -Wextra -Wpedantic -g)
-    elseif(MSVC)
-        target_compile_options(shm_reader PRIVATE /W4 /Zi)
-        target_compile_options(shm_writer PRIVATE /W4 /Zi)
-    endif()
-
-
-
-    add_executable(delete_shm examples/delete_shm.c)
-    target_link_libraries(delete_shm PRIVATE robot_ipc)
-
-    target_include_directories(shm_reader PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_include_directories(shm_writer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_include_directories(delete_shm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_subdirectory(examples)
 endif()
