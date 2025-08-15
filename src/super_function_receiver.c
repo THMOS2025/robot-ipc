@@ -92,6 +92,10 @@ attach_super_function(const char *name, \
     p->req_fd = p->res_fd = 0;
     p->foo = foo;
 
+    /* make sure the path exist */
+    if (mkdir(PIPE_NAME_PREFIX, 0700) != 0 && errno != EEXIST)
+        EXIT_FAILED(-1);
+
     /* open the pipes first */
     static char name_buf[NAME_MAX_LENGTH];
     sprintf(name_buf, PIPE_NAME_PREFIX "%s_req", name);
@@ -207,7 +211,8 @@ __super_function_dispatcher(void *arg)
 
                 /* Write to the response pipe if there is returning value */
                 if(ret_sz != 0 && ret_buffer != NULL) {
-                    write(func_node->res_fd, ret_buffer, ret_sz);
+                    if(write(func_node->res_fd, ret_buffer, ret_sz) != ret_sz)
+                        ; /* some error may ocurr, but I don't know what to do */
                     free(ret_buffer);
                 }
             }

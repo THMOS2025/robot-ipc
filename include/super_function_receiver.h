@@ -9,7 +9,7 @@
 typedef struct _s_super_function_dispatcher* super_function_dispatcher;
 
 /* Define the signature of super functions */
-typedef void (*super_function)(const void *args, size_t args_sz, \
+typedef void (*super_function)(const void *args, const size_t args_sz, \
         void **ret, size_t *ret_sz);
 
 super_function_dispatcher create_super_function_dispatcher();

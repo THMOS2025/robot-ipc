@@ -25,7 +25,7 @@ if(DEBUG_BUILD)
     # You can also add more specific debug flags here
     # For example, for GCC/Clang:
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        add_compile_options("-g" "-O0")
+        add_compile_options("-g" "-O0" "-Wall")
     endif()
 else()
     # If the switch is OFF, set the build type to Release
