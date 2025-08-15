@@ -6,12 +6,12 @@
 
 #include "super_function_receiver.h"
 
+
+#define EXIT_FAILED(x) { err_code = x; goto FAILED; }
+
+
 struct _s_super_function_list_node {
     struct _s_super_function_list_node *nxt;
-#if ALLOW_DELETE_FUNCTION_FROM_DISPATCH
-    // used as identity in implement of deleting a function from a dispatcher
-    char name[NAME_MAX_LENGTH]; 
-#endif
     int req_fd, res_fd;
     super_function foo;
 };
@@ -19,8 +19,13 @@ struct _s_super_function_list_node {
 struct _s_super_function_dispatcher {
     int epoll_fd;
     pthread_t thread;
+    /* a chain of the functions dispatched by this this dispatcher */
     struct _s_super_function_list_node *head;
 };
+
+
+/* private functions */
+void *__super_function_dispatcher(void *arg);
 
 
 super_function_dispatcher 
@@ -31,7 +36,7 @@ create_super_function_dispatcher()
     p->head = NULL;
     if((p->epoll_fd = epoll_create1(0)) < 0) 
         goto FAILED; /* cannot create a epoll */ 
-    if(pthread_create(&p->thread, NULL, my_thread_function, NULL) != 0)
+    if(pthread_create(&p->thread, NULL, __super_function_dispatcher, p) != 0)
         goto FAILED; /* cannot create a thread handle */ 
     return p;
 FAILED:
@@ -70,20 +75,15 @@ _try_to_open_pipe(const char *name)
     
 
 int
-attach_super_function_dispatcher(const char *name, \
+attach_super_function(const char *name, \
         super_function foo, super_function_dispatcher dispatcher)
 {
-#define EXIT_FAILED(x) { err_code = x; goto FAILED; }
 
     int err_code = 0;
     struct _s_super_function_list_node *p;
     p = malloc(sizeof(struct _s_super_function_list_node));
     p->req_id = p->res_id = 0;
     p->foo = foo;
-
-#if ALLOW_DELETE_FUNCTION_FROM_DISPATCHER
-    strcpy(p->name, name);
-#endif
 
     /* open the pipes first */
     static char name_buf[NAME_MAX_LENGTH];
@@ -101,18 +101,61 @@ attach_super_function_dispatcher(const char *name, \
     /* listening to this pipe in the epoll */
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.fd = p->req_fd;
+    ev.data.ptr = (void*)p;
     if(epoll_ctl(dispatcher->epoll_fd, EPOLL_CTL_ADD, p->req_fd, &ev) == -1)
         EXIT_FAILED(-1); /* can not attach this fd to epoll */
 
     return err_code;
 
 FAILED: /* we have to free the pointer p */
-    if(p->req_id > 0) close(p->req_id);
-    if(p->res_id > 0) close(p->res_id);
+    if(p->req_fd > 0) close(p->req_fd);
+    if(p->res_fd > 0) close(p->res_fd);
     free(p);
     return err_code;
-#undef EXIT_FAILED(x)
+}
+
+
+int
+detach_super_function(super_function foo, super_function_dispatcher dispatcher)
+{
+    /* prev always points to the pointer referencing to tmp, that is, 
+     * *prev = tmp. Briefly, assume the chain structure as:
+     *
+     *    +---+   +---+   +---+
+     * ->-- A *->-- B -->-- C -->-
+     *    +---|   +-*-+   +---+
+     *        |     ^
+     *        |    *nxt=B
+     *        *prev=A->nxt, **prev=B
+     */
+    struct _s_super_function_list_node **prev = &dispatch->head;
+    for(struct _s_super_function_list_node *tmp = dispatcher->head->nxt; 
+            tmp; prev = &tmp->nxt, tmp = tmp->nxt) {
+        if(tmp->foo == foo) {
+            /* firstly try to detach the fd in the epoll */
+            if(epoll_ctl(dispatcher->epoll_fd, \
+                        EPOLL_CTL_DEL, tmp->req_fd, NULL) == -1) {
+                /* Notice we do not remove this function from the chain;
+                 * It is still monitored by this epoll */
+                return -1;
+            }
+
+            *prev = tmp->nxt;
+            close(tmp->req_fd); /* don't forget this */
+            close(tmp->res_fd);
+            free(tmp);
+            return 0;
+        }
+    }
+    /* That function isn't dispatched by this dispatcher */
+    return -2;
+}
+
+
+int
+start_super_function_dispatcher(super_function_dispatcher p)
+{
+    return pthread_detach(p->thread);
 }
 
 
@@ -122,6 +165,10 @@ __super_function_dispatcher(void *arg)
     super_function_dispatcher p = (super_function_dispatcher)arg;
 
     struct epoll_event events[MAX_EPOLL_EVENTS];
+    struct _s_super_function_list_node *func_node;
+    size_t args_sz, ret_sz;
+    ssize_t bytes_read;
+
     while(true) {
         int nfds = epoll_wait(p->epoll_fd, events, MAX_EVENTS, -1);
         if (nfds == -1) {
@@ -131,25 +178,35 @@ __super_function_dispatcher(void *arg)
 
         for (int i = 0; i < nfds; i++) {
             if (events[i].events & EPOLLIN) {
-                // Data is available to be read from this FIFO
-                size_t args_sz = 
-                int bytes_read = read(events[i].data.fd, buffer, sizeof(buffer));
+                /* Data is available to be read from this FIFO */
+                func_node = (struct _s_super_function_list_node*)\
+                            events[i].data.ptr;
 
-                if (bytes_read > 0) {
-                    // Process the data
-                    printf("Read %d bytes from FIFO with fd %d: %.*s\n",
-                           bytes_read, events[i].data.fd, bytes_read, buffer);
-                } else if (bytes_read == 0) {
-                    // End of file (writer closed their end)
-                    printf("FIFO with fd %d closed by writer.\n", events[i].data.fd);
-                } else {
-                    perror("read");
+                /* Read the size of the arguments first */
+                size_t args_sz;
+                bytes_read = read(func_node->req_fd, &args_sz, sizeof(size_t));
+                if(bytes_read != sizeof(size_t)) {
+                    /* Notices that a negative return indicates error and 
+                     * a zero return indicates remote closing the pipe */
+                    continue;
+                }
+
+                /* Then read the real buffer */
+                void *args_buffer = malloc(args_sz), *ret_buffer = NULL;
+                bytes_read = read(func_node->req_fd, args_buffer, args_sz);
+
+                /* Call the funtion blockingly */
+                func_node->foo(args_buffer, args_sz, &ret_buffer, &ret_sz);
+
+                /* Write to the response pipe if there is returning value */
+                if(ret_sz != 0 && ret_buffer != NULL) {
+                    write(func_node->res_fd, ret_buffer, ret_sz);
+                    free(ret_buffer);
                 }
             }
         }
     }
 }
 
-
-
-#if ALLOW_DELETE_FUNCTION_FROM_DISPATCHER
+ 
+#undef EXIT_FAILED(x)

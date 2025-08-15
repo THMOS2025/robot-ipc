@@ -44,9 +44,6 @@
 /* Super funtion prefix in pipe */
 #define PIPE_NAME_PREFIX "/tmp/robot_ipc/"
 
-/* Whether allow deleting functions from a dispatcher */
-#define ALLOW_DELETE_FUNCTION_FROM_DISPATCHER 0
-
 /* Maximum number of epoll events in a single query */
 #define MAX_EPOLL_EVENTS 16
 
