@@ -14,17 +14,17 @@
 // Info codes: 1 ~ 99
 
 // Warning codes: 100 ~ 199
-#define WARN_SHM_NOREAD 100   // Nothing to read
-#define WARN_SHM_QUFULL 101   // The circle queue is full
+#define WARN_SHM_NOREAD     100   // Nothing to read
+#define WARN_SHM_QUFULL     101   // The circle queue is full
 
 // Error codes: 200 ~ 299
-#define ERR_SHM_AQMETALOCK   200    // Failed to acquire meta lock
-#define ERR_SHM_NOWRITETIME  201    // Failed to write timestamp due to failed ti 
-#define ERR_PIPE_REQ         202    // Failed to connect to require pipeacquire meta lock
-#define ERR_PIPE_CLOSE       203    // Failed to close pipe
+#define ERR_SHM_AQMETALOCK  200    // Failed to acquire meta lock
+#define ERR_SHM_NOWRITETIME 201    // Failed to write timestamp due to failed ti 
+#define ERR_PIPE_REQ        202    // Failed to connect to require pipeacquire meta lock
+#define ERR_PIPE_CLOSE      203    // Failed to close pipe
 
 // Fatal/exceptional errors: 300+
-#define FATAL_SHM_CORRUPT 300   // Shared memory corrupted
+#define FATAL_SHM_CORRUPT   300   // Shared memory corrupted
 
 
 /********************
@@ -38,8 +38,12 @@
  * To avoid directly locking the whole block, we use a queue
  * to manage multiple block, which allows multiple IO at the 
  * same time. See producer-consumer problem for help.
- * To accelerate modulo operation, this must be the power of 2. */
-#define CIRCLE_QUEUE_LENGTH 4 
+ * The bitwise status of buffers and the pointer referring to 
+ * the lastest buffer are compressed into a uin64. So, the 
+ * number of buffers should not exceed 14. Recommand to be the 
+ * power of 2 ( for alignmen ). 
+ */
+#define SHM_BUFFER_CNT 4
 
 /* Super funtion prefix in pipe */
 #define PIPE_NAME_PREFIX "/tmp/robot_ipc/"

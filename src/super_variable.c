@@ -8,55 +8,56 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <stdbool.h>
+#include <inttypes.h>
+#include <stdatomic.h>
 
 #include <sys/mman.h>
 #include <sys/stat.h>
 
 #include "super_variable.h"
 
+
 struct _s_super_variable {
-    pthread_mutex_t mtx;
-    uint8_t qhead, qtail;
-    struct timespec timestamp;
-    struct timespec b_timestamp[CIRCLE_QUEUE_LENGTH];
+    /* atomic_* is the newest feature in C11, providing a series of 
+     * atomic operation at the aims of replacing mutex. To make use of 
+     * this, all states should be compressed into a uint64 flags. 
+     * In this algorithm, we have to track a 'target' pointer referring 
+     * to the lastest (readable) buffer, and a lock_cnt for each buffer
+     * to avoid conflict.
+     *
+     * [0 - 3] [3 - 7] ... [52 - 55]: represent the lock_cnt for each buffer
+     * [56 - 63]: storing the 'target' pointer
+     */
+    atomic_uint_least64_t flags; 
+
+    /* struct timespec contains a time_t and a long. On x64 linux systems, 
+     * time_t is alias of int64_t and long is also int64_t. So, it is 
+     * efficient to compress it into a int128_t, with simp/avx support.
+     * To keep atomically ( which is important in multi-threading, we have 
+     * to use the extension provided by GCC. If the platform doesn't support 
+     * atomic int128, GCC just falls back to mutex lock for us. */
+    atomic_uint_least64_t timestamp[SHM_BUFFER_CNT];
+
+    /* below are the data field. Notice that the data field isn't fixed size
+     * with a flexible array member, so this struct shouldn't be construct 
+     * directly ( must be allocated manually ) */
     uint8_t data[];
 };
 
-static inline int acquire_meta_lock(super_variable p)
+
+static uint64_t inline
+get_compressed_timestamp()
 {
-    int result = pthread_mutex_lock(&p->mtx);  // lock the mutex
-    // If the mutex is robust, it may return EOWNERDEAD if the previous owner died
-    if (result == EOWNERDEAD) {
-        // The mutex is now locked, but the state needs to be reset
-        // After this, it's safe to use the mutex again
-        pthread_mutex_consistent(&p->mtx);
-    } 
-    else if (result != 0) {
-        return result;
-    }
-    return 0;
+    struct timespec boot_ts; /* use boot time to avoid overflow */
+    clock_gettime(CLOCK_BOOTTIME, &boot_ts);
+    return ((uint64_t)boot_ts.tv_sec << 32ull) \
+        | ((uint64_t)boot_ts.tv_nsec & 0x00000000FFFFFFFFull);
 }
+ 
 
-
-static inline int release_meta_lock(super_variable p)
-{
-    pthread_mutex_unlock(&p->mtx);
-    return 0;
-}
-
-
-static inline size_t get_full_size(size_t size)
-{
-    return sizeof(struct _s_super_variable) + size * CIRCLE_QUEUE_LENGTH;
-}
-
-
-static inline bool is_later_than(const struct timespec a, const struct timespec b)
-{
-    return a.tv_sec > b.tv_sec || (a.tv_sec == b.tv_sec && a.tv_nsec > b.tv_nsec);
-}
+#define FULL_SIZE(size) \
+    (sizeof(struct _s_super_variable) + size * SHM_BUFFER_CNT)
 
 
 super_variable link_super_variable(const char *name, size_t size)
@@ -66,54 +67,57 @@ super_variable link_super_variable(const char *name, size_t size)
     //     O_RDWR: open for reading and writing
     //     shm_open: create or open a POSIX shared memory object
     //     0600: read and write permissions for the owner
+    const size_t full_size = FULL_SIZE(size);
     int fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600);
     bool is_create = true;
-    if(fd == -1) {
+    if(fd < 0) {
         if(errno == EEXIST) {
             // open the existing shared memory object
             fd = shm_open(name, O_RDWR, 0600);
             is_create = false;
         }
-        if(fd == -1)   // other error cause cant open the shared memory object
-            goto END;
+        if(fd < 0)   // other error cause cant open the shared memory object
+            goto FAILED;
     }
 
     // Change the size of the shared memory object(file) to the required size
-    if(ftruncate(fd, get_full_size(size)) == -1)
-        goto END;
+    if(ftruncate(fd, full_size) == -1)
+        goto FAILED;
     
     // Map it into process's memory 
     super_variable p = (super_variable)mmap(
         NULL, 
-        get_full_size(size), 
+        full_size, 
         PROT_READ | PROT_WRITE, 
-        MAP_SHARED, 
+        MAP_SHARED,
         fd, 
         0
     );
     if(p == MAP_FAILED) 
-        goto END;
+        goto FAILED;
     
-    // Initialize the mutex if created 
+    // Initialize the flags
     if(is_create) { 
-        // Prepare for the attribute of the mutex lock
-        pthread_mutexattr_t attr;
-        pthread_mutexattr_init(&attr);
-        pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-        /* Robust mutex can dealing with process being killed */
-        pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
-        pthread_mutex_init(&p->mtx, &attr);
-        pthread_mutexattr_destroy(&attr);
+        /* set flags to 0b11..1110000 */
+        atomic_store(&p->flags, \
+                (atomic_uint_least64_t) \
+                ((((1ull << (14 - SHM_BUFFER_CNT)*4) - 1) \
+                    << (SHM_BUFFER_CNT*4))));
+        
+        /* timestamp to 0b00..0000000 */
+        for(uint8_t i = 0; i < SHM_BUFFER_CNT; ++i)
+            atomic_store(&p->timestamp[i], (atomic_uint_least64_t)0);
     }
 
+    close(fd); /* we can just close the file descripter after mmap */
     return p;
 
-END:
+FAILED:
     // If we reach here, something went wrong, clean up
     if (fd != -1)
         close(fd);
     if ((void*)p != MAP_FAILED && p != NULL) 
-        munmap(p, get_full_size(size));
+        munmap(p, full_size);
     shm_unlink(name);
     return NULL;
 }
@@ -121,107 +125,100 @@ END:
 
 void unlink_super_variable(super_variable p, const char *name, size_t size)
 {
-    munmap(p, get_full_size(size));
+    munmap(p, FULL_SIZE(size));
     shm_unlink(name);
 }
 
 
-int read_super_variable(super_variable p, void *buf, size_t size, struct timespec *out_timestamp)
+int read_super_variable(super_variable p, void *buf, size_t size)
 {
-    int err_code = 0;
-    // Modify to the meta block should be very fast 
-    err_code = acquire_meta_lock(p);
-    if(err_code) 
-        return ERR_SHM_AQMETALOCK;
+    int target;
+    uint64_t flags, tmp, new_flags;
+    
+    /* add to the lock_cnt for the target buffer */
+    flags = atomic_load(&p->flags);
+    while(true) {
+        target = (flags >> 56);
+        tmp = ((flags >> (target * 4)) & 0xF) + 1;
+        if(tmp == 0x0) /* overflood */
+            return -1; /* lock is full */
+        new_flags = ((flags & ~(0xF << (target*4))) | (tmp << (target*4)));
+        /* atomic_compare_exchange_strong(*atomic, *expected, new) checks 
+         * whether atomic variable equals to the expected value. If so, 
+         * the atomic variable is set to new; otherwise, the expected value is
+         * updated to the current value of the atomic value. This api is a 
+         * low-level instruction of CPU, and it is GUARANTEE to be atomic for 
+         * the whole compare-exchange process. */
+        if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
+            break;
+    }    
+    
+    /* copy the data */
+    memcpy(buf, p->data + target * size, size);
 
-    uint8_t qh = p->qhead, qt = p->qtail;
-    // Compare the timestamp to find the latest data
-    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, \
-                sizeof(struct timespec))){
-        qh = ((qh + 1) & (CIRCLE_QUEUE_LENGTH - 1)); 
+    /* reduce the lock_cnt for the target buffer. Be careful that we
+     * shouldn't get the latest target here. */
+    flags = atomic_load(&p->flags);
+    while(true) {
+        tmp = ((flags >> (target * 4)) & 0xF) - 1;
+        if(tmp == 0xF) /* overflood */
+            return -2; /* unknown error, maybe we can just set it to 0 here */
+        new_flags = ((flags & ~(0xF << (target*4))) | (tmp << (target*4)));
+        if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
+            break;
+    }    
+
+    return 0;
+}
+
+
+int write_super_variable(super_variable p, void *data, size_t size)
+{
+    int target4; /* 4-times of the target buffer we're going to write to */
+    int old_target; /* the current target buffer for reading */
+    uint64_t flags, new_flags;
+    uint64_t timestamp = get_compressed_timestamp(); /* time since boot */
+
+    /* first acquire a free buffer */
+    flags = atomic_load(&p->flags);
+    while(true) {
+        old_target = (flags >> 56ull);
+        target4 = __builtin_ctzll( \
+                ~(flags | (flags >> 1) | (flags >> 2) | (flags >> 3) \
+                    | (0xFull << old_target*4)) \
+                & 0x0011111111111111ull);
+        if(target4 > SHM_BUFFER_CNT * 4)
+            return -1; /* all buffers are full */
+        new_flags = (flags | (0x1ull << target4));
+        if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
+            break;
     }
 
-    p->qhead = qh; p->qtail = qt; 
-    release_meta_lock(p);
-    
-    if(qh == qt) 
-        return WARN_SHM_NOREAD;  // Nothing to read
+    /* then memcopy */
+    p->timestamp[target4>>2] = timestamp;
+    memcpy(p->data + (target4>>2) * size, data, size);
 
-    // mem copying may be costly
-    memcpy(buf, p->data + qh * size, size);
-
-    // If the out_timestamp pointer is not NULL, assign the write timestamp to it
-    if (out_timestamp != NULL) {
-        *out_timestamp = p->b_timestamp[qh];
+    /* finally set the buffer to free */
+    flags = atomic_load(&p->flags);
+    while(true) {
+        old_target = (flags >> 56ull);
+        if(atomic_load(&p->timestamp[old_target]) >= timestamp) {
+            /* release the block we just acquire, cause we are not lastest */
+            __sync_fetch_and_and(&p->flags, ~(0xFull << target4));
+            return 1;
+        }
+        /* construct the new_flags. Set the highest 56-63 bit to the new
+         * target, and set the lock_cnt of the target buffer (the one
+         * we just wrote to ) to 0. */
+        new_flags = ((uint64_t)(target4>>2) << 56ull) \
+                    | (flags & 0x00FFFFFFFFFFFFFFull & ~(0xFull << target4));
+        if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
+            break;
     }
 
     return 0;
 }
 
 
-int write_super_variable(super_variable p, void *data, size_t size, struct timespec *out_timestamp)
-{
-    int err_code = 0;
-    uint8_t tmp;
-    struct timespec ts;
-    
-    clock_gettime(CLOCK_REALTIME, &ts);  // system realtime clock
-
-    // Try to get a free buffer 
-    err_code = acquire_meta_lock(p);
-    if(err_code) 
-        return ERR_SHM_AQMETALOCK;  // We haven't acquire a lock here, so just return is ok
-
-    uint8_t qh = p->qhead, qt = p->qtail;
-    if(is_later_than(p->timestamp, ts)) { // Just do nothing if not the lastest 
-        err_code = 1;
-        goto END_METALOCK;
-    }
-    // Find the lastest data in the circle queue
-    while(qh != qt && memcmp(&p->b_timestamp[qh], &p->timestamp, \
-                sizeof(struct timespec))){
-        qh = ((qh + 1) & (CIRCLE_QUEUE_LENGTH - 1)); 
-    }
-
-    // Append the selected buffer to the end of the queue 
-    tmp = qt;    // [qh, qt), so we have to write to tmp
-    qt = ((qt + 1) & (CIRCLE_QUEUE_LENGTH - 1));
-    if(qh == qt) {       // the circle queue is full
-        qt = tmp;        // roll back
-        err_code = -1;   // Warning, the queue is full, so we should not write to it
-        goto END_METALOCK;
-    }
-    p->b_timestamp[tmp] = ts;
-
-END_METALOCK: 
-    p->qtail = qt; p->qhead = qh;
-    release_meta_lock(p);
-    if(err_code) 
-        return err_code;
-
-    // mem copying 
-    // The process which get the meta lock can write to the data block
-    memcpy(p->data + tmp * size, data, size);
-
-    // The process which write the data is out of meta lock, 
-    // so we should acquire it again to write the timestamp
-    err_code = acquire_meta_lock(p);
-    p->timestamp = ts;
-    if(err_code) /* we modify the timestamp aggressively to prevent deadlock */
-        return ERR_SHM_NOWRITETIME;  
-    release_meta_lock(p);
-
-    // If the out_timestamp pointer is not NULL, assign the write timestamp to it
-    if (out_timestamp != NULL) {
-        *out_timestamp = ts;
-    }
-
-    return 0;
-}
-
-
-struct timespec
-get_super_variable_timestamp(super_variable p)
-{
-    return p->timestamp;
-}
+#undef TIMESPEC_TO_UINT64
+#undef FULL_SIZE
