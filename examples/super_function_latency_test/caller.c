@@ -19,12 +19,10 @@ int main(int argc, char **argv)
     printf("Linked super function\n");
 
     struct timespec ts;
-    for(int i = 0; 1; ++i) {
+    for(int i = 0; i < 1000000; ++i) {
         clock_gettime(CLOCK_MONOTONIC, &ts);
         call_super_function(x, &ts);
-        if(i % 1000 == 0)
-            printf("i = %d\n", i);
-        usleep(1);
+        // usleep(1);
     }
 
     unlink_super_function(x);

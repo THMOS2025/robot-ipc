@@ -20,7 +20,6 @@ struct _s_super_function_caller {
 int static inline
 _try_to_open_pipe(const char *name)
 {
-    printf("try_to_open_pipe: %s\n", name);
     /* Try to create first, then open it if already exists */
     if (mkfifo(name, 0600) == -1) {
         if (errno != EEXIST) /* other error rather than EEXIST */

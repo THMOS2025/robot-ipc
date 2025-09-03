@@ -2,10 +2,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 
 #include "super_function_receiver.h"
 
-int called_cnt = 0;
+atomic_uint_least32_t called_cnt = 0;
 
 struct timespec diff(struct timespec start, struct timespec end) {
     struct timespec temp;
@@ -22,13 +23,13 @@ struct timespec diff(struct timespec start, struct timespec end) {
 
 void *foo(const void *args)
 {
-    ++called_cnt;
+    atomic_fetch_add(&called_cnt, 1);
 
     struct timespec sent_ts, curr_ts, diff_ts;
     sent_ts = *(struct timespec*)args;
     clock_gettime(CLOCK_MONOTONIC, &curr_ts);
     diff_ts = diff(sent_ts, curr_ts);
-    if(called_cnt % 1000 == 0)
+    if(called_cnt % 10000 == 0)
         printf("latency = (%1ld.%09ld), sent_ts=(%5ld.%09ld), curr_ts=(%5ld.%09ld)\n", \
                 diff_ts.tv_sec, diff_ts.tv_nsec, \
                 sent_ts.tv_sec, sent_ts.tv_nsec, \
@@ -42,16 +43,19 @@ int main(int argc, char **argv)
     printf("super function receiver\n");
     
     /* first create a dispatcher */
-    super_function_dispatcher x;
-    x = create_super_function_dispatcher(16);
+    super_function_dispatcher x[16];
+    for(int i = 0; i < 16; ++i)
+        x[i] = create_super_function_dispatcher(1);
     printf("super_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
-    attach_super_function(x, "stress_test", foo, sizeof(struct timespec), 0);
+    for(int i = 0; i < 16; ++i)
+        attach_super_function(x[i], "stress_test", foo, sizeof(struct timespec), 0);
     printf("attached foo to super_function dispatcher\n");
 
     /* run the dispatcher daemon */
-    start_super_function_dispatcher(x);
+    for(int i = 0; i < 16; ++i)
+        start_super_function_dispatcher(x[i]);
     printf("super_function dispatcher started\n");
 
     /* Stuck the main thread */
