@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "super_variable.h"
+#include "host_variable.h"
 
 struct data_pack {
     struct timespec ts;
@@ -13,15 +13,15 @@ struct data_pack {
 
 int main(int argc, char **argv)
 {
-    super_variable x;
+    host_variable x;
 
-    x = link_super_variable("latency_test", sizeof(struct data_pack));
+    x = link_host_variable("latency_test", sizeof(struct data_pack));
 
     struct timespec ts;
     int64_t diff;
 
     while(1) {
-        read_super_variable(x, &data, sizeof(struct data_pack));
+        read_host_variable(x, &data, sizeof(struct data_pack));
         clock_gettime(CLOCK_REALTIME, &ts);
         diff = ts.tv_nsec - data.ts.tv_nsec;
         if(diff < 0) diff += 1000000000ull; 

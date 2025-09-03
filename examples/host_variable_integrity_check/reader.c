@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "super_variable.h"
+#include "host_variable.h"
 
 #define DATA_SIZE 1024
 
@@ -15,8 +15,8 @@ struct data_pack {
 
 int main(int argc, char **argv)
 {
-    super_variable x;
-    x = link_super_variable("test", sizeof(struct data_pack));
+    host_variable x;
+    x = link_host_variable("test", sizeof(struct data_pack));
     if(x == NULL) {
         perror("can not link to test: \n");
         return -1;
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     printf("Reader started. \n");
     struct data_pack data;
     while(true) {
-        if(read_super_variable(x, &data, sizeof(struct data_pack))) {
+        if(read_host_variable(x, &data, sizeof(struct data_pack))) {
             perror("read failed !\n");
             return -1;
         }
@@ -38,6 +38,6 @@ int main(int argc, char **argv)
         }
     }
 
-    unlink_super_variable(x, "test", sizeof(struct data_pack));
+    unlink_host_variable(x, "test", sizeof(struct data_pack));
     return 0;
 }

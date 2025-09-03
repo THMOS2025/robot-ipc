@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "super_variable.h"
+#include "host_variable.h"
 
 struct data_pack {
     struct timespec ts;
@@ -12,13 +12,13 @@ struct data_pack {
 
 int main(int argc, char **argv)
 {
-    super_variable x;
+    host_variable x;
 
-    x = link_super_variable("latency_test", sizeof(struct data_pack));
+    x = link_host_variable("latency_test", sizeof(struct data_pack));
 
     for(int i = 0; i < 100000000; ++i) {
         clock_gettime(CLOCK_REALTIME, &data.ts);
-        write_super_variable(x, &data, sizeof(struct data_pack));
+        write_host_variable(x, &data, sizeof(struct data_pack));
     }
 
     return 0;

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 
-#include "super_function_receiver.h"
+#include "host_function_receiver.h"
 
 atomic_uint_least32_t called_cnt = 0;
 
@@ -40,23 +40,23 @@ void *foo(const void *args)
 
 int main(int argc, char **argv)
 {
-    printf("super function receiver\n");
+    printf("host function receiver\n");
     
     /* first create a dispatcher */
-    super_function_dispatcher x[16];
+    host_function_dispatcher x[16];
     for(int i = 0; i < 16; ++i)
-        x[i] = create_super_function_dispatcher(1);
-    printf("super_function dispatcher created\n");
+        x[i] = create_host_function_dispatcher(1);
+    printf("host_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
     for(int i = 0; i < 16; ++i)
-        attach_super_function(x[i], "stress_test", foo, sizeof(struct timespec), 0);
-    printf("attached foo to super_function dispatcher\n");
+        attach_host_function(x[i], "stress_test", foo, sizeof(struct timespec), 0);
+    printf("attached foo to host_function dispatcher\n");
 
     /* run the dispatcher daemon */
     for(int i = 0; i < 16; ++i)
-        start_super_function_dispatcher(x[i]);
-    printf("super_function dispatcher started\n");
+        start_host_function_dispatcher(x[i]);
+    printf("host_function dispatcher started\n");
 
     /* Stuck the main thread */
     while(called_cnt < 10000000) {

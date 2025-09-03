@@ -15,10 +15,11 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include "super_variable.h"
+#include "host_variable.h"
+#include "config.h"
 
 
-struct _s_super_variable {
+struct _s_host_variable {
     /* atomic_* is the newest feature in C11, providing a series of 
      * atomic operation at the aims of replacing mutex. To make use of 
      * this, all states should be compressed into a uint64 flags. 
@@ -57,10 +58,10 @@ get_compressed_timestamp()
  
 
 #define FULL_SIZE(size) \
-    (sizeof(struct _s_super_variable) + size * SHM_BUFFER_CNT)
+    (sizeof(struct _s_host_variable) + size * SHM_BUFFER_CNT)
 
 
-super_variable link_super_variable(const char *name, const size_t size)
+host_variable link_host_variable(const char *name, const size_t size)
 {
     // Try to open an existing and create if failed 
     //     0_CREAT | O_EXCL: create a new shared memory object
@@ -85,7 +86,7 @@ super_variable link_super_variable(const char *name, const size_t size)
         goto FAILED;
     
     // Map it into process's memory 
-    super_variable p = (super_variable)mmap(
+    host_variable p = (host_variable)mmap(
         NULL, 
         full_size, 
         PROT_READ | PROT_WRITE, 
@@ -123,14 +124,14 @@ FAILED:
 }
 
 
-void unlink_super_variable(super_variable p, const char *name, const size_t size)
+void unlink_host_variable(host_variable p, const char *name, const size_t size)
 {
     munmap(p, FULL_SIZE(size));
     shm_unlink(name);
 }
 
 
-int read_super_variable(super_variable p, void *buf, const size_t size)
+int read_host_variable(host_variable p, void *buf, const size_t size)
 {
     int target;
     uint64_t flags, tmp, new_flags;
@@ -172,7 +173,7 @@ int read_super_variable(super_variable p, void *buf, const size_t size)
 }
 
 
-int write_super_variable(super_variable p, const void *data, const size_t size)
+int write_host_variable(host_variable p, const void *data, const size_t size)
 {
     int target4; /* 4-times of the target buffer we're going to write to */
     int old_target; /* the current target buffer for reading */

@@ -8,10 +8,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "super_function_caller.h"
+#include "host_function_caller.h"
+#include "config.h"
 
 
-struct _s_super_function_caller {
+struct _s_host_function_caller {
     int req_fd, res_fd;
     size_t sz_arg, sz_ret;
 };
@@ -31,11 +32,11 @@ _try_to_open_pipe(const char *name)
 }
 
 
-super_function_caller
-link_super_function(const char *name, const size_t sz_arg, const size_t sz_ret) 
+host_function_caller
+link_host_function(const char *name, const size_t sz_arg, const size_t sz_ret) 
 {
     static char name_buf[256];
-    super_function_caller p = malloc(sizeof(struct _s_super_function_caller));
+    host_function_caller p = malloc(sizeof(struct _s_host_function_caller));
     p->sz_arg = sz_arg;
     p->sz_ret = sz_ret;
     
@@ -65,7 +66,7 @@ FAILED:
 
 
 int
-unlink_super_function(super_function_caller p)
+unlink_host_function(host_function_caller p)
 {
     int ret = 0;
 
@@ -83,7 +84,7 @@ unlink_super_function(super_function_caller p)
 
 
 int
-call_super_function(super_function_caller p, void *arg)
+call_host_function(host_function_caller p, void *arg)
 {
     if(write(p->req_fd, arg, p->sz_arg) != p->sz_arg)
         return -1;
@@ -92,7 +93,7 @@ call_super_function(super_function_caller p, void *arg)
 
 
 int
-get_response_super_function(super_function_caller p, void *ret)
+get_response_host_function(host_function_caller p, void *ret)
 {
     if(read(p->res_fd, ret, p->sz_ret) != p->sz_ret)
         return -1;

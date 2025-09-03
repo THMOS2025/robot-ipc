@@ -10,14 +10,15 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 
-#include "super_function_receiver.h"
+#include "host_function_receiver.h"
+#include "config.h"
 
 
-const int _DISPATCHER_EXIT      = -1;
-const int _DISPATCHER_SUSPEND   = -2;
+#define _DISPATCHER_EXIT        -1
+#define _DISPATCHER_SUSPEND     -2
 
 
-struct _s_super_function_dispatcher {
+struct _s_host_function_dispatcher {
     /* variables for running the dispatcher */
     int epoll_fd, pipe[2]; 
     pthread_t thread;
@@ -25,20 +26,20 @@ struct _s_super_function_dispatcher {
     /* functions to be dispatcher */
     size_t cnt_func;
     int *req_fd, *res_fd;
-    super_function *foo;
+    host_function *foo;
     size_t *sz_arg, *sz_ret;
 };
 
 
 /* private functions the entry of pthread  */
-void *__super_function_dispatcher(void *arg);
+static void *__host_function_dispatcher(void *arg);
 
 
-super_function_dispatcher 
-create_super_function_dispatcher(const size_t n)
+host_function_dispatcher 
+create_host_function_dispatcher(const size_t n)
 {
-    super_function_dispatcher p;
-    p = malloc(sizeof(struct _s_super_function_dispatcher));
+    host_function_dispatcher p;
+    p = malloc(sizeof(struct _s_host_function_dispatcher));
 
     /* initialize epoll */
     if(pipe(p->pipe) == -1)
@@ -54,14 +55,14 @@ create_super_function_dispatcher(const size_t n)
         goto FAILED_EPOLL_CTL; 
 
     /* create the pthread */
-    if(pthread_create(&p->thread, NULL, __super_function_dispatcher, p) != 0)
+    if(pthread_create(&p->thread, NULL, __host_function_dispatcher, p) != 0)
         goto FAILED_PTHREAD; /* cannot create a thread handle */ 
 
     /* malloc memory for storing infos of functions to be dispatched */
     p->cnt_func = 0;
     p->req_fd = malloc(n * sizeof(int));
     p->res_fd = malloc(n * sizeof(int));
-    p->foo = malloc(n * sizeof(super_function));
+    p->foo = malloc(n * sizeof(host_function));
     p->sz_arg = malloc(n * sizeof(size_t));
     p->sz_ret = malloc(n * sizeof(size_t));
     return p;
@@ -77,11 +78,11 @@ FAILED_PIPE:
 
 
 int
-delete_super_function(super_function_dispatcher p)
+delete_host_function(host_function_dispatcher p)
 {
     /* wait for the sub process to exit */
-    int ret, tmp;
-    tmp = write(p->pipe[1], &_DISPATCHER_EXIT, sizeof(int));
+    int ret, tmp = _DISPATCHER_EXIT;
+    tmp = write(p->pipe[1], &tmp, sizeof(int));
     tmp = read(p->pipe[0], &ret, sizeof(int));
 
     /* free the space */
@@ -111,8 +112,8 @@ _try_to_open_pipe(const char *name)
     
 
 int
-attach_super_function(super_function_dispatcher p, \
-        const char *name, super_function foo, \
+attach_host_function(host_function_dispatcher p, \
+        const char *name, host_function foo, \
         const size_t sz_arg, const size_t sz_ret)
 {
     int err_code = 0;
@@ -164,16 +165,16 @@ FAILED_MKDIR:
 
 
 int
-start_super_function_dispatcher(super_function_dispatcher p)
+start_host_function_dispatcher(host_function_dispatcher p)
 {
     return pthread_detach(p->thread);
 }
 
 
-void *
-__super_function_dispatcher(void *arg) 
+static void *
+__host_function_dispatcher(void *arg) 
 {
-    super_function_dispatcher p = (super_function_dispatcher)arg;
+    host_function_dispatcher p = (host_function_dispatcher)arg;
 
     struct epoll_event events[MAX_EPOLL_EVENTS];
     size_t args_sz, ret_sz;
@@ -230,3 +231,5 @@ __super_function_dispatcher(void *arg)
 }
 
  
+#undef _DISPATCHER_EXIT
+#undef _DISPATCHER_SUSPEND

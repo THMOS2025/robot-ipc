@@ -3,7 +3,7 @@ project(robot_ipc C)
 
 
 option(BUILD_EXAMPLE "Build the examples" ON)
-option(DEBUG_BUILD "Enable debug flags and symbols" OFF)
+option(DEBUG_BUILD "Enable debug flags and symbols" ON)
 
 # multi-thread building
 if(NOT DEFINED CMAKE_BUILD_PARALLEL_LEVEL)
@@ -32,7 +32,7 @@ else()
 
     # Add optimization flags for a release build
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        add_compile_options("-O2")
+        add_compile_options("-O3")
     endif()
 endif()
 

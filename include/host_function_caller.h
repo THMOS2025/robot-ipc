@@ -1,4 +1,4 @@
-/* super_variable.h
+/* host_variable.h
  */
 
 #ifndef _H_SUPER_FUNCTION_CALLER
@@ -6,16 +6,16 @@
 
 #include "constant.h"
 
-typedef struct _s_super_function_caller* super_function_caller;
+typedef struct _s_host_function_caller* host_function_caller;
 
 /* Link and unlink a remote function. They are identified by names. */
-super_function_caller link_super_function(const char* name, \
+host_function_caller link_host_function(const char* name, \
         const size_t sz_arg, const size_t sz_ret);
-int unlink_super_function(super_function_caller p);
+int unlink_host_function(host_function_caller p);
 
 /* Notice: this function will block until the remote return. 
  * This api return the size of returned data from remote, and -1 if failed. */
-int call_super_function(super_function_caller p, void* arg);
-int get_response_super_function(super_function_caller p, void *ret_buf);
+int call_host_function(host_function_caller p, void* arg);
+int get_response_host_function(host_function_caller p, void *ret_buf);
 
 #endif 

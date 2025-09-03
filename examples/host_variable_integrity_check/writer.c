@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "super_variable.h"
+#include "host_variable.h"
 
 #define DATA_SIZE 1024
 
@@ -15,7 +15,7 @@ struct data_pack {
     uint32_t chksum;
 };
 
-super_variable x;
+host_variable x;
 
 void *thread_main(void *args)
 {
@@ -30,7 +30,7 @@ void *thread_main(void *args)
             data.chksum ^= data.data[i];
         }
 
-        if(write_super_variable(x, &data, sizeof(struct data_pack)) < 0)
+        if(write_host_variable(x, &data, sizeof(struct data_pack)) < 0)
             printf("write failed !\n");
     }
     return NULL;
@@ -39,7 +39,7 @@ void *thread_main(void *args)
 int main(int argc, char **argv)
 {
     srand(time(NULL));
-    x = link_super_variable("test", sizeof(struct data_pack));
+    x = link_host_variable("test", sizeof(struct data_pack));
 
     pthread_t thrd[16];
     for(int i = 0; i < 16; ++i) {
@@ -48,6 +48,6 @@ int main(int argc, char **argv)
     }
 
     sleep(100);
-    unlink_super_variable(x, "test", sizeof(struct data_pack));
+    unlink_host_variable(x, "test", sizeof(struct data_pack));
     return 0;
 }
