@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(robot_ipc C)
 
 
-option(BUILD_EXAMPLE "Build the examples" ON)
-option(DEBUG_BUILD "Enable debug flags and symbols" ON)
+option(BUILD_EXAMPLE "Build the examples" OFF)
+option(DEBUG_BUILD "Enable debug flags and symbols" OFF)
 
 # multi-thread building
 if(NOT DEFINED CMAKE_BUILD_PARALLEL_LEVEL)
