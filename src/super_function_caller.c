@@ -13,6 +13,7 @@
 
 struct _s_super_function_caller {
     int req_fd, res_fd;
+    size_t sz_arg, sz_ret;
 };
 
 
@@ -32,10 +33,12 @@ _try_to_open_pipe(const char *name)
 
 
 super_function_caller
-link_super_function(const char *name) 
+link_super_function(const char *name, const size_t sz_arg, const size_t sz_ret) 
 {
     static char name_buf[256];
     super_function_caller p = malloc(sizeof(struct _s_super_function_caller));
+    p->sz_arg = sz_arg;
+    p->sz_ret = sz_ret;
     
     /* make sure the path exists */
     if (mkdir(PIPE_NAME_PREFIX, 0700) != 0 && errno != EEXIST)
@@ -81,24 +84,18 @@ unlink_super_function(super_function_caller p)
 
 
 int
-call_super_function(super_function_caller p,
-        void *args, size_t args_sz)
+call_super_function(super_function_caller p, void *arg)
 {
-    if(write(p->req_fd, &args_sz, sizeof(size_t)) != sizeof(size_t))
-        return -1;
-    if(write(p->req_fd, args, args_sz) != args_sz)
+    if(write(p->req_fd, arg, p->sz_arg) != p->sz_arg)
         return -1;
     return 0;
 }
 
 
-ssize_t
-get_response_super_function(super_function_caller p, void *ret_buf)
+int
+get_response_super_function(super_function_caller p, void *ret)
 {
-    size_t ret_sz;
-    if(read(p->res_fd, &ret_sz, sizeof(size_t)) != sizeof(size_t))
+    if(read(p->res_fd, ret, p->sz_ret) != p->sz_ret)
         return -1;
-    if(read(p->res_fd, ret_buf, ret_sz) != ret_sz)
-        return -1;
-    return (ssize_t)ret_sz;
+    return 0;
 }

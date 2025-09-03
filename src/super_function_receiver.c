@@ -1,4 +1,3 @@
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -14,39 +13,64 @@
 #include "super_function_receiver.h"
 
 
-#define EXIT_FAILED(x) { err_code = x; goto FAILED; }
+const int _DISPATCHER_EXIT      = -1;
+const int _DISPATCHER_SUSPEND   = -2;
 
-
-struct _s_super_function_list_node {
-    struct _s_super_function_list_node *nxt;
-    int req_fd, res_fd;
-    super_function foo;
-};
 
 struct _s_super_function_dispatcher {
-    int epoll_fd;
+    /* variables for running the dispatcher */
+    int epoll_fd, pipe[2]; 
     pthread_t thread;
-    /* a chain of the functions dispatched by this this dispatcher */
-    struct _s_super_function_list_node *head;
+    
+    /* functions to be dispatcher */
+    size_t cnt_func;
+    int *req_fd, *res_fd;
+    super_function *foo;
+    size_t *sz_arg, *sz_ret;
 };
 
 
-/* private functions */
+/* private functions the entry of pthread  */
 void *__super_function_dispatcher(void *arg);
 
 
 super_function_dispatcher 
-create_super_function_dispatcher()
+create_super_function_dispatcher(const size_t n)
 {
     super_function_dispatcher p;
     p = malloc(sizeof(struct _s_super_function_dispatcher));
-    p->head = NULL;
+
+    /* initialize epoll */
+    if(pipe(p->pipe) == -1)
+        goto FAILED_PIPE; /* cannot create a pipe */
     if((p->epoll_fd = epoll_create1(0)) < 0) 
-        goto FAILED; /* cannot create a epoll */ 
+        goto FAILED_EPOLL; /* cannot create a epoll */ 
+
+    /* attach the control pipe to epoll */
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.u64 = -1;
+    if (epoll_ctl(p->epoll_fd, EPOLL_CTL_ADD, p->pipe[0], &ev) == -1)
+        goto FAILED_EPOLL_CTL; 
+
+    /* create the pthread */
     if(pthread_create(&p->thread, NULL, __super_function_dispatcher, p) != 0)
-        goto FAILED; /* cannot create a thread handle */ 
+        goto FAILED_PTHREAD; /* cannot create a thread handle */ 
+
+    /* malloc memory for storing infos of functions to be dispatched */
+    p->cnt_func = 0;
+    p->req_fd = malloc(n * sizeof(int));
+    p->res_fd = malloc(n * sizeof(int));
+    p->foo = malloc(n * sizeof(super_function));
+    p->sz_arg = malloc(n * sizeof(size_t));
+    p->sz_ret = malloc(n * sizeof(size_t));
     return p;
-FAILED:
+
+FAILED_PTHREAD:
+FAILED_EPOLL_CTL:
+    close(p->epoll_fd);
+FAILED_EPOLL:
+FAILED_PIPE:
     free(p);
     return NULL;
 }
@@ -55,15 +79,20 @@ FAILED:
 int
 delete_super_function(super_function_dispatcher p)
 {
-    for(struct _s_super_function_list_node *tmp = p->head;
-            p->head; tmp = p->head, p->head = p->head->nxt) {
-        close(tmp->req_fd);
-        close(tmp->res_fd);
-        free(tmp);
-    }
+    /* wait for the sub process to exit */
+    int ret, tmp;
+    tmp = write(p->pipe[1], &_DISPATCHER_EXIT, sizeof(int));
+    tmp = read(p->pipe[0], &ret, sizeof(int));
+
+    /* free the space */
     close(p->epoll_fd);
+    free(p->req_fd);
+    free(p->res_fd);
+    free(p->foo);
+    free(p->sz_arg);
+    free(p->sz_ret);
     free(p);
-    return 0;
+    return ret;
 }
 
 
@@ -82,84 +111,55 @@ _try_to_open_pipe(const char *name)
     
 
 int
-attach_super_function(const char *name, \
-        super_function foo, super_function_dispatcher dispatcher)
+attach_super_function(super_function_dispatcher p, \
+        const char *name, super_function foo, \
+        const size_t sz_arg, const size_t sz_ret)
 {
-
     int err_code = 0;
-    struct _s_super_function_list_node *p;
-    p = malloc(sizeof(struct _s_super_function_list_node));
-    p->req_fd = p->res_fd = 0;
-    p->foo = foo;
+    int id = p->cnt_func++;
+    p->sz_arg[id] = sz_arg;
+    p->sz_ret[id] = sz_ret;
+    p->foo[id] = foo;
 
     /* make sure the path exist */
-    if (mkdir(PIPE_NAME_PREFIX, 0700) != 0 && errno != EEXIST)
-        EXIT_FAILED(-1);
+    if (mkdir(PIPE_NAME_PREFIX, 0700) != 0 && errno != EEXIST) {
+        err_code = -1;
+        goto FAILED_MKDIR;
+    }
 
     /* open the pipes first */
     static char name_buf[NAME_MAX_LENGTH];
     sprintf(name_buf, PIPE_NAME_PREFIX "%s_req", name);
-    if((p->req_fd = _try_to_open_pipe(name_buf)) < 0)
-        EXIT_FAILED(-1); /* can not open the request pipe */
+    if((p->req_fd[id] = _try_to_open_pipe(name_buf)) < 0) {
+        err_code = -2;
+        goto FAILED_PIPE_REQ; /* can not open the request pipe */
+    }
     sprintf(name_buf, PIPE_NAME_PREFIX "%s_res", name);
-    if((p->res_fd = _try_to_open_pipe(name_buf)) < 0)
-        EXIT_FAILED(-1); /* can not open the request pipe */
-
-    /* then add this node on the chain */
-    p->nxt = dispatcher->head;
-    dispatcher->head = p;
+    if((p->res_fd[id] = _try_to_open_pipe(name_buf)) < 0) {
+        err_code = -2;
+        goto FAILED_PIPE_RES; /* can not open the request pipe */
+    }
 
     /* listening to this pipe in the epoll */
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.ptr = (void*)p;
-    if(epoll_ctl(dispatcher->epoll_fd, EPOLL_CTL_ADD, p->req_fd, &ev) == -1)
-        EXIT_FAILED(-1); /* can not attach this fd to epoll */
-
-    return err_code;
-
-FAILED: /* we have to free the pointer p */
-    if(p->req_fd > 0) close(p->req_fd);
-    if(p->res_fd > 0) close(p->res_fd);
-    free(p);
-    return err_code;
-}
-
-
-int
-detach_super_function(super_function foo, super_function_dispatcher dispatcher)
-{
-    /* prev always points to the pointer referencing to tmp, that is, 
-     * *prev = tmp. Briefly, assume the chain structure as:
-     *
-     *    +---+   +---+   +---+
-     * ->-- A *->-- B -->-- C -->-
-     *    +---|   +-*-+   +---+
-     *        |     ^
-     *        |    *nxt=B
-     *        *prev=A->nxt, **prev=B
-     */
-    struct _s_super_function_list_node **prev = &dispatcher->head;
-    for(struct _s_super_function_list_node *tmp = dispatcher->head->nxt; 
-            tmp; prev = &tmp->nxt, tmp = tmp->nxt) {
-        if(tmp->foo == foo) {
-            /* firstly try to detach the fd in the epoll */
-            if(epoll_ctl(dispatcher->epoll_fd, \
-                        EPOLL_CTL_DEL, tmp->req_fd, NULL) == -1) {
-                /* Notice we do not remove this function from the chain;
-                 * It is still monitored by this epoll */
-                return -1;
-            }
-
-            *prev = tmp->nxt;
-            close(tmp->req_fd); /* don't forget this */
-            close(tmp->res_fd);
-            free(tmp);
-            return 0;
-        }
+    struct epoll_event ev = {
+        .events = EPOLLIN, 
+        .data.u64 = id,
+    };
+    if(epoll_ctl(p->epoll_fd, EPOLL_CTL_ADD, p->req_fd[id], &ev) == -1) {
+        err_code = -3;
+        goto FAILED_EPOLL_CTL; /* can not attach this fd to epoll */
     }
-    /* That function isn't dispatched by this dispatcher */
-    return -2;
+
+    return err_code;
+
+FAILED_EPOLL_CTL:
+    close(p->res_fd[id]);
+FAILED_PIPE_RES:
+    close(p->req_fd[id]);
+FAILED_PIPE_REQ:
+FAILED_MKDIR:
+    --p->cnt_func;
+    return err_code;
 }
 
 
@@ -176,11 +176,12 @@ __super_function_dispatcher(void *arg)
     super_function_dispatcher p = (super_function_dispatcher)arg;
 
     struct epoll_event events[MAX_EPOLL_EVENTS];
-    struct _s_super_function_list_node *func_node;
     size_t args_sz, ret_sz;
     ssize_t bytes_read;
+    int id, tmp;
+    bool should_exit = false;
 
-    while(true) {
+    while(!should_exit) {
         int nfds = epoll_wait(p->epoll_fd, events, MAX_EPOLL_EVENTS, -1);
         if (nfds == -1) {
             /* an error occur, but we have no time to handle it. */
@@ -190,28 +191,36 @@ __super_function_dispatcher(void *arg)
         for (int i = 0; i < nfds; i++) {
             if (events[i].events & EPOLLIN) {
                 /* Data is available to be read from this FIFO */
-                func_node = (struct _s_super_function_list_node*)\
-                            events[i].data.ptr;
+                id = events[i].data.u64;
 
-                /* Read the size of the arguments first */
-                size_t args_sz;
-                bytes_read = read(func_node->req_fd, &args_sz, sizeof(size_t));
-                if(bytes_read != sizeof(size_t)) {
-                    /* Notices that a negative return indicates error and 
-                     * a zero return indicates remote closing the pipe */
+                if(id & (0x1ull << 63)) {
+                    /* control signal */
+                    bytes_read = read(p->pipe[0], &tmp, sizeof(int));
+                    switch(tmp) {
+                    case _DISPATCHER_EXIT:
+                        tmp = 0;
+                        should_exit = 1;
+                        break;
+                    }
+                    tmp = write(p->pipe[1], &tmp, sizeof(int));
+                }
+
+
+                /* Then read the real buffer */
+                void *arg_buffer = malloc(p->sz_arg[id]);
+                bytes_read = read(p->req_fd[id], arg_buffer, p->sz_arg[id]);
+                if(bytes_read != p->sz_arg[id]) {
+                    /* Something wrong happened */
                     continue;
                 }
 
-                /* Then read the real buffer */
-                void *args_buffer = malloc(args_sz), *ret_buffer = NULL;
-                bytes_read = read(func_node->req_fd, args_buffer, args_sz);
-
                 /* Call the funtion blockingly */
-                func_node->foo(args_buffer, args_sz, &ret_buffer, &ret_sz);
+                void *ret_buffer = p->foo[id](arg_buffer);
 
                 /* Write to the response pipe if there is returning value */
-                if(ret_sz != 0 && ret_buffer != NULL) {
-                    if(write(func_node->res_fd, ret_buffer, ret_sz) != ret_sz)
+                if(ret_buffer != NULL) {
+                    if(write(p->res_fd[id], ret_buffer, p->sz_ret[id]) != \
+                            p->sz_ret[id])
                         ; /* some error may ocurr, but I don't know what to do */
                     free(ret_buffer);
                 }
@@ -221,4 +230,3 @@ __super_function_dispatcher(void *arg)
 }
 
  
-#undef EXIT_FAILED

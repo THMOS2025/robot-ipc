@@ -60,7 +60,7 @@ get_compressed_timestamp()
     (sizeof(struct _s_super_variable) + size * SHM_BUFFER_CNT)
 
 
-super_variable link_super_variable(const char *name, size_t size)
+super_variable link_super_variable(const char *name, const size_t size)
 {
     // Try to open an existing and create if failed 
     //     0_CREAT | O_EXCL: create a new shared memory object
@@ -123,14 +123,14 @@ FAILED:
 }
 
 
-void unlink_super_variable(super_variable p, const char *name, size_t size)
+void unlink_super_variable(super_variable p, const char *name, const size_t size)
 {
     munmap(p, FULL_SIZE(size));
     shm_unlink(name);
 }
 
 
-int read_super_variable(super_variable p, void *buf, size_t size)
+int read_super_variable(super_variable p, void *buf, const size_t size)
 {
     int target;
     uint64_t flags, tmp, new_flags;
@@ -172,7 +172,7 @@ int read_super_variable(super_variable p, void *buf, size_t size)
 }
 
 
-int write_super_variable(super_variable p, void *data, size_t size)
+int write_super_variable(super_variable p, const void *data, const size_t size)
 {
     int target4; /* 4-times of the target buffer we're going to write to */
     int old_target; /* the current target buffer for reading */

@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 
     printf("super function caller\n");
     super_function_caller x;
-    x = link_super_function("test");
+    x = link_super_function("test", sizeof(int), 0);
 
     if(!x) {
         perror("Can not link super function !");
@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     int args = rand();
     printf("Call super function with args = %d\n", args);
-    call_super_function(x, &args, sizeof(args));
+    call_super_function(x, &args);
     
 
     unlink_super_function(x);

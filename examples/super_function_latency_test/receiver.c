@@ -20,8 +20,7 @@ struct timespec diff(struct timespec start, struct timespec end) {
 }
 
 
-void foo(const void *args, const size_t args_size, \
-        void **ret, size_t *ret_sz)
+void *foo(const void *args)
 {
     ++called_cnt;
 
@@ -29,13 +28,12 @@ void foo(const void *args, const size_t args_size, \
     sent_ts = *(struct timespec*)args;
     clock_gettime(CLOCK_MONOTONIC, &curr_ts);
     diff_ts = diff(sent_ts, curr_ts);
-    if(called_cnt % 100000 == 0)
+    if(called_cnt % 1000 == 0)
         printf("latency = (%1ld.%09ld), sent_ts=(%5ld.%09ld), curr_ts=(%5ld.%09ld)\n", \
                 diff_ts.tv_sec, diff_ts.tv_nsec, \
                 sent_ts.tv_sec, sent_ts.tv_nsec, \
                 curr_ts.tv_sec, curr_ts.tv_nsec );
-    *ret = NULL; /* one way to disable response */
-    *ret_sz = 0; /* another way to disable response */
+    return NULL;
 }
 
 
@@ -45,11 +43,11 @@ int main(int argc, char **argv)
     
     /* first create a dispatcher */
     super_function_dispatcher x;
-    x = create_super_function_dispatcher();
+    x = create_super_function_dispatcher(16);
     printf("super_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
-    attach_super_function("stress_test", foo, x);
+    attach_super_function(x, "stress_test", foo, sizeof(struct timespec), 0);
     printf("attached foo to super_function dispatcher\n");
 
     /* run the dispatcher daemon */

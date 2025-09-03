@@ -51,5 +51,4 @@
 /* Maximum number of epoll events in a single query */
 #define MAX_EPOLL_EVENTS 16
 
-
 #endif // ROBOT_IPC_CODES_H

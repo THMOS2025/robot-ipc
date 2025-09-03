@@ -3,13 +3,11 @@
 
 #include "super_function_receiver.h"
 
-void foo(const void *args, const size_t args_size, \
-        void **ret, size_t *ret_sz)
+void* foo(const void *args)
 {
     int data = *(int*)args; /* interpret args as int */
     printf("foo called: data = %d\n", data);
-    *ret = NULL; /* one way to disable response */
-    *ret_sz = 0; /* another way to disable response */
+    return NULL; /* disable response */
 }
 
 int main(int argc, char **argv)
@@ -18,11 +16,11 @@ int main(int argc, char **argv)
     
     /* first create a dispatcher */
     super_function_dispatcher x;
-    x = create_super_function_dispatcher();
+    x = create_super_function_dispatcher(64);
     printf("super_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
-    attach_super_function("test", foo, x);
+    attach_super_function(x, "test", foo, sizeof(int), 0);
     printf("attached foo to super_function dispatcher\n");
 
     /* run the dispatcher daemon */

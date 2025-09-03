@@ -8,18 +8,14 @@
 
 typedef struct _s_super_function_dispatcher* super_function_dispatcher;
 
-/* Define the signature of super functions */
-typedef void (*super_function)(const void *args, const size_t args_sz, \
-        void **ret, size_t *ret_sz);
+/* Define the signature of super functions. The size in not explicted given
+ * here; it is determinated by the extra info attracted to the epoll callback */
+typedef void* (*super_function)(const void *args);
 
-super_function_dispatcher create_super_function_dispatcher();
-int delete_super_function_dispatcher(super_function_dispatcher p);
-int attach_super_function(const char* name, \
-        super_function foo, super_function_dispatcher dispatcher);
-int detach_super_function(super_function foo, \
-        super_function_dispatcher dispatcher);
-
+super_function_dispatcher create_super_function_dispatcher(const size_t n);
+int attach_super_function(super_function_dispatcher p, \
+        const char* name, super_function foo, \
+        const size_t sz_arg, const size_t sz_ret);
 int start_super_function_dispatcher(super_function_dispatcher p);
-
 
 #endif
