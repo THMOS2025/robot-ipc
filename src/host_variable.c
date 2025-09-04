@@ -15,6 +15,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 
+#include "robot_ipc_constant.h"
 #include "host_variable.h"
 #include "config.h"
 

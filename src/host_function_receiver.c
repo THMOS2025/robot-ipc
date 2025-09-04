@@ -10,6 +10,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 
+#include "robot_ipc_constant.h"
 #include "host_function_receiver.h"
 #include "config.h"
 
@@ -78,7 +79,7 @@ FAILED_PIPE:
 
 
 int
-delete_host_function(host_function_dispatcher p)
+delete_host_function_dispatcher(host_function_dispatcher p)
 {
     /* wait for the sub process to exit */
     int ret, tmp = _DISPATCHER_EXIT;

@@ -4,7 +4,9 @@
 #ifndef _H_SUPER_FUNCTION_CALLER
 #define _H_SUPER_FUCNTION_CALLER
 
-#include "constant.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _s_host_function_caller* host_function_caller;
 
@@ -17,5 +19,9 @@ int unlink_host_function(host_function_caller p);
  * This api return the size of returned data from remote, and -1 if failed. */
 int call_host_function(host_function_caller p, void* arg);
 int get_response_host_function(host_function_caller p, void *ret_buf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

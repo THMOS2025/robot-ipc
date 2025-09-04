@@ -1,9 +1,9 @@
-/* constant.h
+/* robot_ipc_constant.h
+ *  Definition of constants
  */
 
-#ifndef _H_CONSTANT
-#define _H_CONSTANT
-
+#ifndef _H_ROBOT_IPC_CONSTANT
+#define _H_ROBOT_IPC_CONSTANT
 
 // Success code; 0
 #define ROBOT_OK 0
@@ -22,5 +22,6 @@
 
 // Fatal/exceptional errors: 300+
 #define FATAL_SHM_CORRUPT   300   // Shared memory corrupted
+
 
 #endif

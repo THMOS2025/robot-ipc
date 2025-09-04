@@ -4,7 +4,9 @@
 #ifndef _H_SUPER_FUNCTION_RECEIVER
 #define _H_SUPER_FUNCTION_RECEIVER
 
-#include "constant.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _s_host_function_dispatcher* host_function_dispatcher;
 
@@ -13,9 +15,14 @@ typedef struct _s_host_function_dispatcher* host_function_dispatcher;
 typedef void* (*host_function)(const void *args);
 
 host_function_dispatcher create_host_function_dispatcher(const size_t n);
+int delete_host_function_dispatcher(host_function_dispatcher p);
 int attach_host_function(host_function_dispatcher p, \
         const char* name, host_function foo, \
         const size_t sz_arg, const size_t sz_ret);
 int start_host_function_dispatcher(host_function_dispatcher p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

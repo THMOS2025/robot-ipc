@@ -1,4 +1,5 @@
 #include "logger.h"
+#include "robot_ipc_constant.h"
 
 
 // Map your code to log level

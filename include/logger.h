@@ -5,7 +5,6 @@
 #include <stdarg.h>
 #include <time.h>
 
-#include "constant.h"
 
 // Log levels
 typedef enum {

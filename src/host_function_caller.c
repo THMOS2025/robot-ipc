@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "robot_ipc_constant.h"
 #include "host_function_caller.h"
 #include "config.h"
 
