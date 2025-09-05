@@ -5,9 +5,11 @@
 
 #include "host_variable.h"
 
+#define PAYLOAD_SIZE 32
+
 struct data_pack {
     struct timespec ts;
-    uint8_t data[1024 * 1024 * 10];
+    uint8_t data[PAYLOAD_SIZE];
 } data;
 
 int main(int argc, char **argv)

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -136,6 +137,14 @@ int read_host_variable(host_variable p, void *buf, const size_t size)
 {
     int target;
     uint64_t flags, tmp, new_flags;
+
+#ifndef NDEBUG
+    /* The two while loop should not be interrupt by signal */
+    static sigset_t all_signals, old_mask;
+    sigfillset(&all_signals);
+    if (sigprocmask(SIG_SETMASK, &all_signals, &old_mask) < 0) 
+        perror("Signal mask failed. IO will run unprotected");
+#endif
     
     /* add to the lock_cnt for the target buffer */
     flags = atomic_load(&p->flags);
@@ -170,6 +179,11 @@ int read_host_variable(host_variable p, void *buf, const size_t size)
             break;
     }    
 
+#ifndef NDEBUG
+    if (sigprocmask(SIG_SETMASK, &old_mask, NULL) < 0)
+        perror("sigprocmask restore failed");
+#endif
+
     return 0;
 }
 
@@ -180,6 +194,13 @@ int write_host_variable(host_variable p, const void *data, const size_t size)
     int old_target; /* the current target buffer for reading */
     uint64_t flags, new_flags;
     uint64_t timestamp = get_compressed_timestamp(); /* time since boot */
+    
+#ifndef NDEBUG
+    static sigset_t all_signals, old_mask;
+    sigfillset(&all_signals);
+    if (sigprocmask(SIG_SETMASK, &all_signals, &old_mask) < 0) 
+        perror("Signal mask failed. IO will run unprotected");
+#endif
 
     /* first acquire a free buffer */
     flags = atomic_load(&p->flags);
@@ -195,6 +216,7 @@ int write_host_variable(host_variable p, const void *data, const size_t size)
         if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
             break;
     }
+    
 
     /* then memcopy */
     p->timestamp[target4>>2] = timestamp;
@@ -217,6 +239,11 @@ int write_host_variable(host_variable p, const void *data, const size_t size)
         if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
             break;
     }
+    
+#ifndef NDEBUG
+    if (sigprocmask(SIG_SETMASK, &old_mask, NULL) < 0)
+        perror("sigprocmask restore failed");
+#endif
 
     return 0;
 }

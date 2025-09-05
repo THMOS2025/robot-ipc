@@ -6,9 +6,11 @@
 
 #include "host_variable.h"
 
+#define PAYLOAD_SIZE 32
+
 struct data_pack {
     struct timespec ts;
-    uint8_t data[1024 * 1024 * 10];
+    uint8_t data[PAYLOAD_SIZE];
 } data;
 
 int main(int argc, char **argv)
@@ -25,7 +27,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_REALTIME, &ts);
         diff = ts.tv_nsec - data.ts.tv_nsec;
         if(diff < 0) diff += 1000000000ull; 
-        printf("diff = %lfms curr=%ld,%ld\n", \
+        printf("diff = %lfms curr=%ld.%ld\n", \
                 (double)diff / 1e6, ts.tv_sec, ts.tv_nsec);
     }
 

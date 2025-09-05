@@ -8,6 +8,7 @@
 #include <memory>
 #include <cstring>
 #include <functional>
+#include <type_traits>
 
 #include "host_variable.h"
 #include "host_function_caller.h"
@@ -26,6 +27,7 @@ public:
     explicit HostVariable(const HostVariable&) = delete;
     HostVariable& operator=(const HostVariable&) = delete;
     explicit HostVariable(const std::string& name) : name(name) {
+        static_assert(std::is_pod<T>::value, "Error: T must be a POD type");
         this->p = link_host_variable(this->name.c_str(), sizeof(T));
         if(!this->p)
             throw std::runtime_error("Can not link host variable.");
@@ -56,6 +58,8 @@ public:
     explicit HostFunctionCaller(const HostFunctionCaller&) = delete;
     HostFunctionCaller& operator=(const HostFunctionCaller&) = delete;
     explicit HostFunctionCaller(const std::string& name) {
+        static_assert(std::is_pod<T>::value, "Error: Arg must be a POD type");
+        static_assert(std::is_pod<R>::value, "Error: Ret must be a POD type");
         this->p = link_host_function(name.c_str(), sizeof(T), sizeof(R));
     }
     ~HostFunctionCaller() {
@@ -85,6 +89,8 @@ public:
     }
     template<typename R, typename T>
     int attach(const std::string &name, R* (*foo)(T*)) {
+        static_assert(std::is_pod<R>::value, "Error: Ret must be a POD type");
+        static_assert(std::is_pod<T>::value, "Error: Arg must be a POD type");
         return attach_host_function(this->p, \
                 name.c_str(), \
                 reinterpret_cast<void* (*)(const void*)>(foo), 
