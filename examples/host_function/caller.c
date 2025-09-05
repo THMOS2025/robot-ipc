@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 
     printf("host function caller\n");
     host_function_caller x;
-    x = link_host_function("test", sizeof(int), 0);
+    x = link_host_function("host_function", sizeof(int), sizeof(int));
 
     if(!x) {
         perror("Can not link host function !");
@@ -23,6 +23,9 @@ int main(int argc, char **argv)
     printf("Call host function with args = %d\n", args);
     call_host_function(x, &args);
     
+    int ret; 
+    get_response_host_function(x, &ret);
+    printf("Return: %d\n", ret);
 
     unlink_host_function(x);
     return 0;

@@ -85,7 +85,7 @@ unlink_host_function(host_function_caller p)
 
 
 int
-call_host_function(host_function_caller p, void *arg)
+call_host_function(host_function_caller p, const void *arg)
 {
     if(write(p->req_fd, arg, p->sz_arg) != p->sz_arg)
         return -1;

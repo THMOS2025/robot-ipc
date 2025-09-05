@@ -224,7 +224,6 @@ __host_function_dispatcher(void *arg)
                     if(write(p->res_fd[id], ret_buffer, p->sz_ret[id]) != \
                             p->sz_ret[id])
                         ; /* some error may ocurr, but I don't know what to do */
-                    free(ret_buffer);
                 }
             }
         }

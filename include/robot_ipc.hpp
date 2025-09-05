@@ -6,64 +6,93 @@
 
 #include <string>
 #include <memory>
+#include <cstring>
 #include <functional>
+
+#include "host_variable.h"
+#include "host_function_caller.h"
+#include "host_function_receiver.h"
 
 namespace RobotIPC {
 
 
 /* Host variable wrappers */
-struct _s_host_variable;
-using host_variable = struct _s_host_variable*;
-
 template<typename T>
 class HostVariable {
 private:
     const std::string name;
-    struct _s_host_variable* p;
+    host_variable p;
 public:
-    HostVariable(const std::string& name);
     explicit HostVariable(const HostVariable&) = delete;
-    ~HostVariable();
     HostVariable& operator=(const HostVariable&) = delete;
-    int write(const T& data);
-    int read(T& data);
+    explicit HostVariable(const std::string& name) : name(name) {
+        this->p = link_host_variable(this->name.c_str(), sizeof(T));
+        if(!this->p)
+            throw std::runtime_error("Can not link host variable.");
+    }
+    ~HostVariable() {
+        unlink_host_variable(this->p, this->name.c_str(), sizeof(T));
+    }
+    int write(const T& data) {
+        return write_host_variable(this->p, &data, sizeof(T));
+    }
+    int read(T& data) {
+        return read_host_variable(this->p, &data, sizeof(T));
+    }
 };
 
 
 /* Host function caller */
-struct _s_host_function_caller;
-using host_function_caller = struct _s_host_function_caller*;
+// Primary template declaration, to be specialized below
+template<typename Func>
+class HostFunctionCaller;
 
-template<typename R, typename... Arg>
-class HostFunctionCaller {
+// Partial specialization for function types (e.g., int(int, int))
+template<typename R, typename T>
+class HostFunctionCaller<R(T)> {
 private:
-    std::unique_ptr<char[]> args_buf;
-    struct _s_host_function_caller* p;
+    host_function_caller p;
 public:
-    HostFunctionCaller(const HostFunctionCaller&) = delete;
-    explicit HostFunctionCaller(const std::string& name);
-    ~HostFunctionCaller();
+    explicit HostFunctionCaller(const HostFunctionCaller&) = delete;
     HostFunctionCaller& operator=(const HostFunctionCaller&) = delete;
-    int operator()(Arg&&... args);
-    int get_response(R& ret);
+    explicit HostFunctionCaller(const std::string& name) {
+        this->p = link_host_function(name.c_str(), sizeof(T), sizeof(R));
+    }
+    ~HostFunctionCaller() {
+        unlink_host_function(this->p);
+    }
+    int operator()(const T& arg) {
+        return call_host_function(this->p, &arg);
+    }
+    int get_response(R& ret) {
+        return get_response_host_function(this->p, &ret);
+    }
 };
 
 
 /* Host function dispatcher */
-struct _s_host_functino_dispatcher;
-using host_function_dispatcher = struct _s_host_function_dispatcher*;
-
 class HostFunctionDispatcher {
 private:
-    struct _s_host_function_dispatcher* p;
+    host_function_dispatcher p;
 public:
-    HostFunctionDispatcher(const HostFunctionDispatcher&) = delete;
-    explicit HostFunctionDispatcher(const size_t& num_func = 16);
-    ~HostFunctionDispatcher();
+    explicit HostFunctionDispatcher(const HostFunctionDispatcher&) = delete;
     HostFunctionDispatcher& operator=(const HostFunctionDispatcher&) = delete;
-    template<typename R, typename... Arg>
-    int attach(const std::string &name, std::function<R(Arg...)> foo);
-    int start();
+    explicit HostFunctionDispatcher(const size_t& num_func = 16) {
+        this->p = create_host_function_dispatcher(num_func);
+    }
+    ~HostFunctionDispatcher() {
+        delete_host_function_dispatcher(this->p);
+    }
+    template<typename R, typename T>
+    int attach(const std::string &name, R* (*foo)(T*)) {
+        return attach_host_function(this->p, \
+                name.c_str(), \
+                reinterpret_cast<void* (*)(const void*)>(foo), 
+                sizeof(T), sizeof(R));
+    }
+    int start() {
+        return start_host_function_dispatcher(this->p);
+    }
 };
 
 

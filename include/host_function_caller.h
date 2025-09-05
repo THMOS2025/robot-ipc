@@ -17,7 +17,7 @@ int unlink_host_function(host_function_caller p);
 
 /* Notice: this function will block until the remote return. 
  * This api return the size of returned data from remote, and -1 if failed. */
-int call_host_function(host_function_caller p, void* arg);
+int call_host_function(host_function_caller p, const void* arg);
 int get_response_host_function(host_function_caller p, void *ret_buf);
 
 #ifdef __cplusplus

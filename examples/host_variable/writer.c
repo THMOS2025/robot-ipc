@@ -8,7 +8,7 @@
 int main(int argc, char **argv)
 {
     host_variable x;
-    x = link_host_variable("test", sizeof(int));
+    x = link_host_variable("host_variable", sizeof(int));
     if(x == NULL) {
         perror("can not link to test: \n");
         return -1;
@@ -20,6 +20,6 @@ int main(int argc, char **argv)
     else
         perror("can not write: ");
 
-    // unlink_host_variable(x, "test", sizeof(int));
+    unlink_host_variable(x, "test", sizeof(int));
     return 0;
 }

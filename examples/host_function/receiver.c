@@ -6,8 +6,12 @@
 void* foo(const void *args)
 {
     int data = *(int*)args; /* interpret args as int */
-    printf("foo called: data = %d\n", data);
-    return NULL; /* disable response */
+    printf("foo called: data = %d ", data);
+    static int ret;
+    ret = data - 1;
+    printf("return = %d\n", ret);
+    return (void*)&ret;
+    /* Or, disable returning by: return NULL; */
 }
 
 int main(int argc, char **argv)
@@ -20,7 +24,7 @@ int main(int argc, char **argv)
     printf("host_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
-    attach_host_function(x, "test", foo, sizeof(int), 0);
+    attach_host_function(x, "host_function", foo, sizeof(int), sizeof(int));
     printf("attached foo to host_function dispatcher\n");
 
     /* run the dispatcher daemon */
