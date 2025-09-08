@@ -12,7 +12,7 @@ Similarly, many DDS frameworks, like FastDDS, are designed for distributing data
 
 * * *
 
-### Concepts
+### Concepts & Usage
 
 This library introduces two core concepts for inter-process communication: `host_variable` and `host_function`. Just as a global variable or function can be accessed across different modules within a single process, these "host" objects can be accessed across different processes.
 
@@ -24,6 +24,7 @@ This library introduces two core concepts for inter-process communication: `host
     Functions are called **asynchronously** within a single dispatcher.  
     Functions dispatched by different dispatchers run **concurrently** in different threads.
     
+See [apis.md](docs/apis.md) for detailed api definition. 
 
 * * *
 
@@ -37,81 +38,4 @@ This project uses **CMake** for its build system, making it easy to integrate in
     Whether to build C interface into the .so file.
 - BUILD_CPP  
     Whether to build C++ interface into the .so file.
-
-* * *
-
-### APIs & manual
-
-Include "robot_ipc.h" for C style definitions and "robot_ipc.hpp" for C++ style definitions.
-
-- HostVariable  
-    **C style**
-    
-    - `typedef struct _s_host_variable host_variable`: host_variable is the handle of a host_variable.
-    - `host_variable link_host_variable(const char* name, const size_t size)`  
-        `name`: A string that identify the host_variable.  
-        `size`: The size of the variable. Have to be the same **everywhere** you operate this variable strictly, in process or inter-process.  
-        `return`: A handle of the host_variable. NULL if encounted error.
-    - `int read_host_variable(host_variable p, void *buf, const size_t size)`  
-        `p`: A valid host_variable handle to read from.  
-        `buf`: A void\* pointer referring to a memory buf where the data is going to be copied to. Have to be larger than size.  
-        `size`: The size of the variable, as previously mentioned.  
-        `return`: 0 if success, otherwise the error code.
-    - `int write_host_variable(host_varible p, const void *data, const size_t size)`  
-        `p`: A valid host_variable to write to.  
-        `buf`: The buffer of data to write into the variable.  
-        `size`: The sizeof the variable, as mentioned.  
-        `return`: 0 if success, otherwise the error code.
-    
-    **C++ style**
-    
-    - `template<typename T> class HostVariable`: The class wrapper in C++ style. T have to be a POD type.
-        
-        > ##### POD
-        > 
-        > POD, or Plain Old Data, is a type that has a fixed memory structure which can be dumped (or, serialized in python) into binary data using memcpy. In C++, a typically POD is a struct without any functions/method. Builtin types are POD, but containers in STL aren't.  
-        > To transfer data between process, data structures have to be dumped first and should not contain process-related pointers ( otherwise, another process can only read the pointer itself but not the data it refers to ). So template type T have to be a POD here.
-        
-    - `HostVariable(const std::string& name)`: Initialize function  
-        `name`: The string to identify the variable
-        
-    - `int .write(const T& data)`: Write into the variable  
-        `data`: Reference to data.  
-        `return`: 0 if success, otherwise error code.
-        
-    - `int .read(T& data)`: Read from variable  
-        `data`: Reference to receive buffer.  
-        `return`: 0 if success, otherwise error code.
-        
-- HostFunctionCaller  
-	> ##### Note
-	> Limited to the language, remote funciton has only one argument and can only return at most one response. Argument and response should be POD both.
-    
-    **C Style**
-    
-    - `typedef struct _s_host_function_caller* host_function_caller;` Works as a handle to call a remote funciton.
-    - `host_function_caller link_host_funcition(const char* name, const size_t sz_arg, const size_t sz_ret);`       
-        `name` Link to a remote function identified by name.      
-        `sz_arg` is the size of the argument buffe.     
-        `sz_ret` indicates the size of the return buffer.     
-        `return` A handle (pointer) of a remote function caller object if success and NULL otherwise.
-    - `int call_host_function(host_function_caller p, const void* arg);`      
-        `p` The remote function handle       
-        `arg` A pointer of a buffer with size sz_arg (The second parameter in the previous API).  
-        `return` 0 if success and error code otherwise.
-    - `int get_response_host_function(host_funcion_caller p, void *ret_buf)`    
-        `p` The handle    
-        `ret_buf` The buffer to store the response by remote function.
-    
-    **C++ Style**
-    
-    - `HostFunctionCaller<R(T)>(const std::string& name)`     
-        `R` The return type of remote function    
-        `T` The parameter type of remote function
-    - `int .operator()(const T& arg)`: Call remote function     
-        `arg` The argument to be passed     
-        `return`   0 if success and error code otherwise
-    - `int .get_response(R& ret)`     
-        `ret`: The reference to a R object in which the response is going to be store. 
-    
 
