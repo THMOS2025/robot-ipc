@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     int64_t diff;
 
     while(1) {
-        read_host_variable(x, &data, sizeof(struct data_pack));
+        read_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack));
         clock_gettime(CLOCK_REALTIME, &ts);
         diff = ts.tv_nsec - data.ts.tv_nsec;
         if(diff < 0) diff += 1000000000ull; 

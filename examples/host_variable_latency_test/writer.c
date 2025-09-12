@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 
     for(int i = 0; i < 100000000; ++i) {
         clock_gettime(CLOCK_REALTIME, &data.ts);
-        write_host_variable(x, &data, sizeof(struct data_pack));
+        write_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack));
     }
 
     return 0;

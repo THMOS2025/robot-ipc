@@ -34,6 +34,9 @@ target_include_directories(robot_ipc
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SORUCE_DIR}/src)
 target_compile_features(robot_ipc PRIVATE cxx_std_17 c_std_11)
+install(TARGETS robot_ipc
+    LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+)
 
 
 # whether to build example

@@ -133,7 +133,8 @@ void unlink_host_variable(host_variable p, const char *name, const size_t size)
 }
 
 
-int read_host_variable(host_variable p, void *buf, const size_t size)
+int read_host_variable(host_variable p, void *buf, \
+        const size_t size, const size_t op_size)
 {
     int target;
     uint64_t flags, tmp, new_flags;
@@ -165,7 +166,7 @@ int read_host_variable(host_variable p, void *buf, const size_t size)
     }    
     
     /* copy the data */
-    memcpy(buf, p->data + target * size, size);
+    memcpy(buf, p->data + target * size, op_size);
 
     /* reduce the lock_cnt for the target buffer. Be careful that we
      * shouldn't get the latest target here. */
@@ -188,7 +189,8 @@ int read_host_variable(host_variable p, void *buf, const size_t size)
 }
 
 
-int write_host_variable(host_variable p, const void *data, const size_t size)
+int write_host_variable(host_variable p, const void *data, \
+        const size_t size, const size_t op_size)
 {
     int target4; /* 4-times of the target buffer we're going to write to */
     int old_target; /* the current target buffer for reading */
@@ -220,7 +222,7 @@ int write_host_variable(host_variable p, const void *data, const size_t size)
 
     /* then memcopy */
     p->timestamp[target4>>2] = timestamp;
-    memcpy(p->data + (target4>>2) * size, data, size);
+    memcpy(p->data + (target4>>2) * size, data, op_size);
 
     /* finally set the buffer to free */
     flags = atomic_load(&p->flags);

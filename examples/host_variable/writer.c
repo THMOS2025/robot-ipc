@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     }
 
     int data = 100;
-    if(write_host_variable(x, &data, sizeof(int)) == 0)
+    if(write_host_variable(x, &data, sizeof(int), sizeof(int)) == 0)
         printf("Write data = %d\n", data);
     else
         perror("can not write: ");

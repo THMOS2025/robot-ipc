@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     printf("Reader started. \n");
     while(true) {
         int data = 0;
-        if(read_host_variable(x, &data, sizeof(int)) == 0)
+        if(read_host_variable(x, &data, sizeof(int), sizeof(int)) == 0)
             printf("data = %d\n", data);
         else
             printf("Can not read data\n");

@@ -36,10 +36,10 @@ public:
         unlink_host_variable(this->p, this->name.c_str(), sizeof(T));
     }
     int write(const T& data) {
-        return write_host_variable(this->p, &data, sizeof(T));
+        return write_host_variable(this->p, &data, sizeof(T), sizeof(T));
     }
     int read(T& data) {
-        return read_host_variable(this->p, &data, sizeof(T));
+        return read_host_variable(this->p, &data, sizeof(T), sizeof(T));
     }
 };
 

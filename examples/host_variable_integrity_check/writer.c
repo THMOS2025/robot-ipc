@@ -30,7 +30,7 @@ void *thread_main(void *args)
             data.chksum ^= data.data[i];
         }
 
-        if(write_host_variable(x, &data, sizeof(struct data_pack)) < 0)
+        if(write_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack)) < 0)
             printf("write failed !\n");
     }
     return NULL;

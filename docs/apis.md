@@ -16,16 +16,23 @@ Note that because host variables are underlying memory blocks, a POD structure m
     * **`name`**: A unique string that identifies the variable.
     * **`size`**: The size of the variable in bytes. This must be the **same** across all processes interacting with this variable.
     * **`return`**: A valid `host_variable` handle, or `NULL` on error.
-* `int read_host_variable(host_variable p, void *buf, const size_t size)`
+* `int read_host_variable(host_variable p, void *buf, const size_t size, const size_t sop_size)`
     * **`p`**: A valid `host_variable` handle to read from.
     * **`buf`**: A pointer to a memory buffer where the data will be copied. The buffer must be at least as large as `size`.
     * **`size`**: The size of the variable, which must match the size used during `link_host_variable`.
+    * **`op_size`**: Indicate how many bytes are really write to buffer. Suitable for non-fixed length data structure.
     * **`return`**: `0` on success, or an error code otherwise.
-* `int write_host_variable(host_variable p, const void *data, const size_t size)`
+* `int write_host_variable(host_variable p, const void *data, const size_t size, const size_t op_size)`
     * **`p`**: A valid `host_variable` handle to write to.
     * **`data`**: A pointer to the data buffer to be written.
     * **`size`**: The size of the variable, which must match the size used during `link_host_variable`.
+    * **`op_size`**: Indicate how many bytes are really write to buffer. Suitable for non-fixed length data structure.
     * **`return`**: `0` on success, or an error code otherwise.
+* `int unlink_host_variable(host_variable p, const char* name, const size_t size)`
+    * **Description**: Unlink a host variable  
+    * **`p`**: The handle
+    * **`name`**: The name of the host variable
+    * **`size`**: The size.
 
 #### C++-Style
 

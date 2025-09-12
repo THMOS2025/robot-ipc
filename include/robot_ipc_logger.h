@@ -1,3 +1,7 @@
+/* robot_ipc_logger.h
+ *  Log in a graceful way
+ */
+
 #ifndef ROBOT_LOGGER_H
 #define ROBOT_LOGGER_H
 

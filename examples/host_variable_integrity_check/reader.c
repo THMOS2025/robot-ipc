@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     printf("Reader started. \n");
     struct data_pack data;
     while(true) {
-        if(read_host_variable(x, &data, sizeof(struct data_pack))) {
+        if(read_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack))) {
             perror("read failed !\n");
             return -1;
         }
