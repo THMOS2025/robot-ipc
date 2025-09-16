@@ -15,16 +15,19 @@ int* foo(int *data) {
 int main(int argc, char **argv) {
     std::cout << "host function receiver" << std::endl;
 
-    RobotIPC::HostFunctionDispatcher dispatcher;
-    std::cout << "HostFunctionDispatcher created" << std::endl;
+    {
+        RobotIPC::HostFunctionDispatcher dispatcher;
+        std::cout << "HostFunctionDispatcher created" << std::endl;
 
-    dispatcher.attach("host_function", foo);
-    std::cout << "attach foo to HostFunctionDispatcher" << std::endl;
+        dispatcher.attach("host_function", foo);
+        std::cout << "attach foo to HostFunctionDispatcher" << std::endl;
 
-    dispatcher.start();
-    std::cout << "HostFunctionDispatcher started" << std::endl;
+        dispatcher.start();
+        std::cout << "HostFunctionDispatcher started" << std::endl;
 
-    while(true)
-        std::this_thread::sleep_for(std::chrono::seconds(10000));
+        // wait some time for the background process to run
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }  // call deconstruct function 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     return 0;
 }

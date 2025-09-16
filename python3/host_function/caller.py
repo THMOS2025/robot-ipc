@@ -1,7 +1,12 @@
 # caller.py
 
+import time
+import datetime
 import robot_ipc
 
 a = robot_ipc.HostFunctionCaller("a")
-a('a', (1, 2))
-print(a.get_response())
+while(True):
+    a(datetime.datetime.now())
+    print(f"call lantency = {a.get_response()}")
+    time.sleep(1)
+

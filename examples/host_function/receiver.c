@@ -16,23 +16,44 @@ void* foo(const void *args)
 
 int main(int argc, char **argv)
 {
+    int ret;
     printf("host function receiver\n");
     
     /* first create a dispatcher */
     host_function_dispatcher x;
     x = create_host_function_dispatcher(64);
+    if(!x) {
+        printf("Can not create host_function_dispatcher\n");
+        return -1;
+    }
+
     printf("host_function dispatcher created\n");
 
     /* then attach a foo to this dispatcher */
-    attach_host_function(x, "host_function", foo, sizeof(int), sizeof(int));
+    ret = attach_host_function(x, "host_function", foo, sizeof(int), sizeof(int));
+    if(ret) {
+        printf("Can not attach function: %d\n", ret);
+        return ret;
+    }
     printf("attached foo to host_function dispatcher\n");
 
     /* run the dispatcher daemon */
-    start_host_function_dispatcher(x);
+    ret = start_host_function_dispatcher(x);
+    if(ret) {
+        printf("Can not start dispatcher: %d\n", ret);
+        return ret;
+    }
     printf("host_function dispatcher started\n");
 
     /* Stuck the main thread */
-    while(1) sleep(10000);
+    sleep(1);
+
+    /* destroy the dispatcher */
+    ret = delete_host_function_dispatcher(x);
+    if(ret) {
+        printf("Can not delete host_function_dispatcher: %d\n", ret);
+        return ret;
+    }
 
     return 0;
 }

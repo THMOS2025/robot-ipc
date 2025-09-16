@@ -33,7 +33,8 @@ public:
             throw std::runtime_error("Can not link host variable.");
     }
     ~HostVariable() {
-        unlink_host_variable(this->p, this->name.c_str(), sizeof(T));
+        if(unlink_host_variable(this->p, this->name.c_str(), sizeof(T)))
+            printf("Can not unlink host variable\n");
     }
     int write(const T& data) {
         return write_host_variable(this->p, &data, sizeof(T), sizeof(T));
@@ -63,7 +64,8 @@ public:
         this->p = link_host_function(name.c_str(), sizeof(T), sizeof(R));
     }
     ~HostFunctionCaller() {
-        unlink_host_function(this->p);
+        if( unlink_host_function(this->p) )
+            printf("Can not unlink host function\n");
     }
     int operator()(const T& arg) {
         return call_host_function(this->p, &arg);
@@ -85,7 +87,8 @@ public:
         this->p = create_host_function_dispatcher(num_func);
     }
     ~HostFunctionDispatcher() {
-        delete_host_function_dispatcher(this->p);
+        if( delete_host_function_dispatcher(this->p) )
+            printf("Can not delete host function dispatcher\n");
     }
     template<typename R, typename T>
     int attach(const std::string &name, R* (*foo)(T*)) {

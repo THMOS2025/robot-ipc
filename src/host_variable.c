@@ -126,10 +126,12 @@ FAILED:
 }
 
 
-void unlink_host_variable(host_variable p, const char *name, const size_t size)
+int unlink_host_variable(host_variable p, const char *name, const size_t size)
 {
-    munmap(p, FULL_SIZE(size));
-    shm_unlink(name);
+    int ret = 0;
+    ret |= munmap(p, FULL_SIZE(size));
+    ret |= shm_unlink(name);
+    return ret;
 }
 
 

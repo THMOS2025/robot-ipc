@@ -21,7 +21,7 @@
 
 struct _s_host_function_dispatcher {
     /* variables for running the dispatcher */
-    int epoll_fd, pipe[2]; 
+    int epoll_fd, to_daemon_fd[2], from_daemon_fd[2];
     pthread_t thread;
     
     /* functions to be dispatcher */
@@ -43,7 +43,7 @@ create_host_function_dispatcher(const size_t n)
     p = malloc(sizeof(struct _s_host_function_dispatcher));
 
     /* initialize epoll */
-    if(pipe(p->pipe) == -1)
+    if(pipe(p->to_daemon_fd) == -1 || pipe(p->from_daemon_fd) == -1)
         goto FAILED_PIPE; /* cannot create a pipe */
     if((p->epoll_fd = epoll_create1(0)) < 0) 
         goto FAILED_EPOLL; /* cannot create a epoll */ 
@@ -51,8 +51,8 @@ create_host_function_dispatcher(const size_t n)
     /* attach the control pipe to epoll */
     struct epoll_event ev;
     ev.events = EPOLLIN;
-    ev.data.u64 = -1;
-    if (epoll_ctl(p->epoll_fd, EPOLL_CTL_ADD, p->pipe[0], &ev) == -1)
+    ev.data.u64 = (uint64_t)(-1);
+    if (epoll_ctl(p->epoll_fd, EPOLL_CTL_ADD, p->to_daemon_fd[0], &ev) == -1)
         goto FAILED_EPOLL_CTL; 
 
     /* create the pthread */
@@ -83,17 +83,28 @@ delete_host_function_dispatcher(host_function_dispatcher p)
 {
     /* wait for the sub process to exit */
     int ret, tmp = _DISPATCHER_EXIT;
-    tmp = write(p->pipe[1], &tmp, sizeof(int));
-    tmp = read(p->pipe[0], &ret, sizeof(int));
+    tmp = write(p->to_daemon_fd[1], &tmp, sizeof(int));
+    tmp = read(p->from_daemon_fd[0], &ret, sizeof(int)); 
 
+    /* close fd */
+    ret |= close(p->epoll_fd);
+    ret |= close(p->to_daemon_fd[0]);
+    ret |= close(p->to_daemon_fd[1]);
+    ret |= close(p->from_daemon_fd[0]);
+    ret |= close(p->from_daemon_fd[1]);
+    for(size_t i = 0; i < p->cnt_func; ++i) {
+        ret |= close(p->req_fd[i]);
+        ret |= close(p->res_fd[i]);
+    }
+    
     /* free the space */
-    close(p->epoll_fd);
     free(p->req_fd);
     free(p->res_fd);
     free(p->foo);
     free(p->sz_arg);
     free(p->sz_ret);
     free(p);
+    
     return ret;
 }
 
@@ -180,7 +191,7 @@ __host_function_dispatcher(void *arg)
     struct epoll_event events[MAX_EPOLL_EVENTS];
     size_t args_sz, ret_sz;
     ssize_t bytes_read;
-    int id, tmp;
+    uint64_t id;
     bool should_exit = false;
 
     while(!should_exit) {
@@ -194,17 +205,18 @@ __host_function_dispatcher(void *arg)
             if (events[i].events & EPOLLIN) {
                 /* Data is available to be read from this FIFO */
                 id = events[i].data.u64;
-
-                if(id & (0x1ull << 63)) {
-                    /* control signal */
-                    bytes_read = read(p->pipe[0], &tmp, sizeof(int));
+                
+                if(id == (uint64_t)(-1)) { /* control signal */
+                    int tmp;
+                    bytes_read = read(p->to_daemon_fd[0], &tmp, sizeof(int));
                     switch(tmp) {
                     case _DISPATCHER_EXIT:
                         tmp = 0;
                         should_exit = 1;
                         break;
                     }
-                    tmp = write(p->pipe[1], &tmp, sizeof(int));
+                    tmp = write(p->from_daemon_fd[1], &tmp, sizeof(int));
+                    continue;
                 }
 
 
@@ -220,7 +232,7 @@ __host_function_dispatcher(void *arg)
                 void *ret_buffer = p->foo[id](arg_buffer);
 
                 /* Write to the response pipe if there is returning value */
-                if(ret_buffer != NULL) {
+                if(ret_buffer != NULL && p->sz_ret[id]) {
                     if(write(p->res_fd[id], ret_buffer, p->sz_ret[id]) != \
                             p->sz_ret[id])
                         ; /* some error may ocurr, but I don't know what to do */
