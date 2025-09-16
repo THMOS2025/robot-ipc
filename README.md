@@ -24,7 +24,7 @@ This library introduces two core concepts for inter-process communication: `host
     Functions are called **asynchronously** within a single dispatcher.  
     Functions dispatched by different dispatchers run **concurrently** in different threads.
     
-See [apis.md](docs/apis.md) for detailed api definition. 
+See [apis.md](docs/apis.md) for detailed api definition and [python3-apis.md](docs/python3-apis.md) or [python3-apis-cn.md](docs/python3-apis-cn.md) for python interfaces. 
 
 * * *
 
