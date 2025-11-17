@@ -1,6 +1,6 @@
 if(BUILD_C)
-    add_executable(reader_c reader.cpp)
-    add_executable(writer_c writer.cpp)
+    add_executable(reader_c reader.c)
+    add_executable(writer_c writer.c)
     target_link_libraries(reader_c PRIVATE robot_ipc)
     target_link_libraries(writer_c PRIVATE robot_ipc)
     set_target_properties(reader_c writer_c PROPERTIES

@@ -20,6 +20,11 @@
 #include "host_variable.h"
 #include "config.h"
 
+#ifndef NDEBUG
+/* the variable to indicate whether we should ignore the ctrl-C signal */
+uint8_t _host_variable_should_wait = 0;
+void (*_host_variable_next_handler)(int);
+#endif
 
 struct _s_host_variable {
     /* atomic_* is the newest feature in C11, providing a series of 
@@ -49,6 +54,10 @@ struct _s_host_variable {
 };
 
 
+#define FULL_SIZE(size) \
+    (sizeof(struct _s_host_variable) + size * SHM_BUFFER_CNT)
+
+
 static uint64_t inline
 get_compressed_timestamp()
 {
@@ -59,17 +68,58 @@ get_compressed_timestamp()
 }
  
 
-#define FULL_SIZE(size) \
-    (sizeof(struct _s_host_variable) + size * SHM_BUFFER_CNT)
+#ifndef NDEBUG
+static void
+__handler_wrap(int signum)
+{
+    if(_host_variable_should_wait) return;
+    if(_host_variable_next_handler == SIG_IGN) return;
+    else if(_host_variable_next_handler == SIG_DFL) {
+        switch(signum) {
+        case 1:
+        case 2:
+        case 9:
+        case 13:
+        case 14:
+        case 15:
+            exit(0);
+        default:
+            return;
+        }
+    }
+    else 
+        _host_variable_next_handler(signum);
+}
 
+
+static void
+_set_handler_wrap()
+{
+    struct sigaction action;
+    if (sigaction(SIGINT, NULL, &action) == -1) return;
+    _host_variable_next_handler = action.sa_handler;
+    sigemptyset(&action.sa_mask);
+    action.sa_handler = __handler_wrap;
+    action.sa_flags &= ~SA_SIGINFO;
+    sigaction(SIGINT, &action, NULL);
+}
+#endif
 
 host_variable link_host_variable(const char *name, const size_t size)
 {
-    // Try to open an existing and create if failed 
-    //     0_CREAT | O_EXCL: create a new shared memory object
-    //     O_RDWR: open for reading and writing
-    //     shm_open: create or open a POSIX shared memory object
-    //     0600: read and write permissions for the owner
+
+#ifndef NDEBUG
+    /* we wrap the default handler for keyboard interrupt to 
+     * prevent exit while memory copying which may cause dead
+     * lock. */
+    _set_handler_wrap();
+#endif
+
+    /* Try to open an existing and create if failed 
+     *     0_CREAT | O_EXCL: create a new shared memory object
+     *     O_RDWR: open for reading and writing
+     *     shm_open: create or open a POSIX shared memory object
+     *     0600: read and write permissions for the owner */
     const size_t full_size = FULL_SIZE(size);
     int fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, 0600);
     bool is_create = true;
@@ -98,7 +148,7 @@ host_variable link_host_variable(const char *name, const size_t size)
     );
     if(p == MAP_FAILED) 
         goto FAILED;
-    
+
     // Initialize the flags
     if(is_create) { 
         /* set flags to 0b11..1110000 */
@@ -130,7 +180,7 @@ int unlink_host_variable(host_variable p, const char *name, const size_t size)
 {
     int ret = 0;
     ret |= munmap(p, FULL_SIZE(size));
-    ret |= shm_unlink(name);
+   // ret |= shm_unlink(name);
     return ret;
 }
 
@@ -142,13 +192,9 @@ int read_host_variable(host_variable p, void *buf, \
     uint64_t flags, tmp, new_flags;
 
 #ifndef NDEBUG
-    /* The two while loop should not be interrupt by signal */
-    static sigset_t all_signals, old_mask;
-    sigfillset(&all_signals);
-    if (sigprocmask(SIG_SETMASK, &all_signals, &old_mask) < 0) 
-        perror("Signal mask failed. IO will run unprotected");
+    _host_variable_should_wait = 1;
 #endif
-    
+
     /* add to the lock_cnt for the target buffer */
     flags = atomic_load(&p->flags);
     while(true) {
@@ -166,9 +212,9 @@ int read_host_variable(host_variable p, void *buf, \
         if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
             break;
     }    
-    
+     
     /* copy the data */
-    memcpy(buf, p->data + target * size, op_size);
+    memcpy(buf, p->data + target * size, op_size);    
 
     /* reduce the lock_cnt for the target buffer. Be careful that we
      * shouldn't get the latest target here. */
@@ -183,8 +229,7 @@ int read_host_variable(host_variable p, void *buf, \
     }    
 
 #ifndef NDEBUG
-    if (sigprocmask(SIG_SETMASK, &old_mask, NULL) < 0)
-        perror("sigprocmask restore failed");
+    _host_variable_should_wait = 0;
 #endif
 
     return 0;
@@ -200,10 +245,7 @@ int write_host_variable(host_variable p, const void *data, \
     uint64_t timestamp = get_compressed_timestamp(); /* time since boot */
     
 #ifndef NDEBUG
-    static sigset_t all_signals, old_mask;
-    sigfillset(&all_signals);
-    if (sigprocmask(SIG_SETMASK, &all_signals, &old_mask) < 0) 
-        perror("Signal mask failed. IO will run unprotected");
+    _host_variable_should_wait = 2;
 #endif
 
     /* first acquire a free buffer */
@@ -245,8 +287,7 @@ int write_host_variable(host_variable p, const void *data, \
     }
     
 #ifndef NDEBUG
-    if (sigprocmask(SIG_SETMASK, &old_mask, NULL) < 0)
-        perror("sigprocmask restore failed");
+    _host_variable_should_wait = 0;
 #endif
 
     return 0;

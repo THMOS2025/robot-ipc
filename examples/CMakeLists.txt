@@ -5,6 +5,7 @@ option(SUPER_FUNCTION_EXAMPLE "Enable building examples for host function" ON)
 
 if(SUPER_VARIABLE_EXAMPLE)
     add_subdirectory(host_variable)
+    add_subdirectory(host_variable_struct)
     add_subdirectory(host_variable_integrity_check)
     add_subdirectory(host_variable_latency_test)
 endif()

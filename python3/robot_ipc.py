@@ -77,10 +77,13 @@ class HostVariable:
 
     data = _HostVariable()
 
-    def __init__(self, name: str, max_size : int = 4096):
+    def __init__(self, name: str, max_size : int = 4096, data_format = None):
+        if data_format is not None:
+            max_size = ctypes.sizeof(data_format)
         self.name, self.max_size = name, max_size
         self.__p = robot_ipc_lib.link_host_variable(name.encode(), max_size)
         self.__buffer = ctypes.create_string_buffer(max_size)
+        self.data_format = data_format
         if not self.__p:
             raise Exception(f"Can not link to {name}")
 
@@ -91,23 +94,31 @@ class HostVariable:
             raise Exception(f"Can not unlink variable {self.__p}")
 
 
-    def write(self, data):
-        pickled_data = pickle.dumps(data)
-        pickled_len = len(pickled_data)
-        void_ptr = ctypes.c_char_p(pickled_data) # this avoid memcoping
-        if pickled_len > self.max_size:
-            raise Exception(f"Data length {len(pickled_data)} exceed max size")
+    def write(self, data, data_len : int | None = None):
+        if self.data_format is None:
+            data = pickle.dumps(data)
+            data_len = len(data)
+            if data_len > self.max_size:
+                raise Exception(f"Data length {data_len} exceed max size")
+            void_ptr = ctypes.c_char_p(data) # this avoid memcoping
+        else:
+            void_ptr = ctypes.byref(data)
+            if data_len is None:
+                data_len = self.max_size
         robot_ipc_lib.write_host_variable(self.__p, \
                 ctypes.cast(void_ptr, ctypes.c_void_p), \
                 self.max_size, \
-                pickled_len)
+                data_len)
 
-    def read(self):
+    def read(self, data_len : int | None = None):
+        if data_len is None:
+            data_len = self.max_size
         robot_ipc_lib.read_host_variable(self.__p, \
                 self.__buffer, self.max_size, self.max_size)
+        if self.data_format is not None:
+            return self.data_format.from_buffer(self.__buffer);
         try:
-            data = pickle.loads(self.__buffer)
-            return data
+            return pickle.loads(self.__buffer)
         except Exception as e:
             return None
 

@@ -24,6 +24,6 @@ int main(int argc, char **argv)
         sleep(1);
     }
 
-    unlink_host_variable(x, "test", sizeof(int));
+    unlink_host_variable(x, "host_variable", sizeof(int));
     return 0;
 }
