@@ -31,6 +31,8 @@ int main(int argc, char **argv)
                 (double)diff / 1e6, ts.tv_sec, ts.tv_nsec);
     }
 
+    unlink_host_variable(x, "latency_test", sizeof(struct data_pack));
+
     return 0;
 }
 

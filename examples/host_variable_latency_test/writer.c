@@ -18,11 +18,12 @@ int main(int argc, char **argv)
 
     x = link_host_variable("latency_test", sizeof(struct data_pack));
 
-    for(int i = 0; i < 100000000; ++i) {
+    while(1) {
         clock_gettime(CLOCK_REALTIME, &data.ts);
         write_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack));
     }
 
+    unlink_host_variable(x, "latency_test", sizeof(struct data_pack));
     return 0;
 }
 

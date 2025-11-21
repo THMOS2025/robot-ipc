@@ -39,3 +39,13 @@ This project uses **CMake** for its build system, making it easy to integrate in
 - BUILD_CPP  
     Whether to build C++ interface into the .so file.
 
+#### Example: Build with Examples
+
+To build the library and the example programs, run the following commands from your project root:
+
+```bash
+mkdir build
+cd build
+cmake -DBUILD_EXAMPLE=ON ..
+make
+```

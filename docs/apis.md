@@ -136,3 +136,19 @@ The size of argument and reponse (0 if non-exist) buffer have to be strictly the
 * ```int .start()```
 	* **Description** Run the dispatcher in background.
 	* ``return`` 0 if success and error code otherwise. 
+
+---
+
+### Shared Memory Management
+The robot_ipc library uses POSIX shared memory objects (typically under ```/dev/shm/```) to enable fast inter-process communication. These shared memory objects are not automatically deleted when your program exits—they must be manually unlinked (deleted) to avoid resource leaks. If you repeatedly run your program without cleanup, you may eventually run into system limits on the number of shared memory objects.
+
+#### How to View Shared Memory Variables
+To see which shared memory objects have been created (including those by robot_ipc), you can use the following command in your terminal to show shared memery names:
+```bash
+ls -lh /dev/shm/
+```
+
+To delete it manually:
+```bash
+rm /dev/shm/my_variable
+```
