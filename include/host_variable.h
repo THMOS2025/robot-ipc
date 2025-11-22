@@ -4,6 +4,9 @@
 #ifndef _H_SUPER_VARIABLE
 #define _H_SUPER_VARIABLE
 
+#include <time.h>
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -16,6 +19,7 @@ int read_host_variable(host_variable p, void *buf, \
         const size_t size, const size_t op_size);
 int write_host_variable(host_variable p, const void *data, \
         const size_t size, const size_t op_size);
+void get_host_variable_timestamp(host_variable p, struct timespec *ret);
 int unlink_host_variable(host_variable p, const char *name, const size_t size);
 
 #ifdef __cplusplus

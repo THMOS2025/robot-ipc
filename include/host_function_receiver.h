@@ -4,6 +4,8 @@
 #ifndef _H_SUPER_FUNCTION_RECEIVER
 #define _H_SUPER_FUNCTION_RECEIVER
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -2,7 +2,9 @@
  */
 
 #ifndef _H_SUPER_FUNCTION_CALLER
-#define _H_SUPER_FUCNTION_CALLER
+#define _H_SUPER_FUNCTION_CALLER
+
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

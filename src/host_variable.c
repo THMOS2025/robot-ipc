@@ -1,6 +1,5 @@
 #define _GNU_SOURCE    // for vscode to recognize variables
 
-#include <time.h>
 #include <fcntl.h> 
 #include <errno.h>
 #include <stdio.h>
@@ -152,14 +151,12 @@ host_variable link_host_variable(const char *name, const size_t size)
     // Initialize the flags
     if(is_create) { 
         /* set flags to 0b11..1110000 */
-        atomic_store(&p->flags, \
-                (atomic_uint_least64_t) \
-                ((((1ull << (14 - SHM_BUFFER_CNT)*4) - 1) \
+        atomic_store(&p->flags, ((((1ull << (14 - SHM_BUFFER_CNT)*4) - 1) \
                     << (SHM_BUFFER_CNT*4))));
         
         /* timestamp to 0b00..0000000 */
         for(uint8_t i = 0; i < SHM_BUFFER_CNT; ++i)
-            atomic_store(&p->timestamp[i], (atomic_uint_least64_t)0);
+            atomic_store(&p->timestamp[i], 0);
     }
 
     close(fd); /* we can just close the file descripter after mmap */
@@ -185,17 +182,9 @@ int unlink_host_variable(host_variable p, const char *name, const size_t size)
 }
 
 
-int read_host_variable(host_variable p, void *buf, \
-        const size_t size, const size_t op_size)
-{
+int static inline __acquire_read_lock(host_variable p) {
     int target;
     uint64_t flags, tmp, new_flags;
-
-#ifndef NDEBUG
-    _host_variable_should_wait = 1;
-#endif
-
-    /* add to the lock_cnt for the target buffer */
     flags = atomic_load(&p->flags);
     while(true) {
         target = (flags >> 56);
@@ -211,13 +200,15 @@ int read_host_variable(host_variable p, void *buf, \
          * the whole compare-exchange process. */
         if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
             break;
-    }    
-     
-    /* copy the data */
-    memcpy(buf, p->data + target * size, op_size);    
+    }
+    return target;
+}
 
+
+int static inline __release_read_lock(host_variable p, int target) {
     /* reduce the lock_cnt for the target buffer. Be careful that we
      * shouldn't get the latest target here. */
+    uint64_t flags, tmp, new_flags;
     flags = atomic_load(&p->flags);
     while(true) {
         tmp = ((flags >> (target * 4)) & 0xF) - 1;
@@ -226,13 +217,31 @@ int read_host_variable(host_variable p, void *buf, \
         new_flags = ((flags & ~(0xF << (target*4))) | (tmp << (target*4)));
         if(atomic_compare_exchange_strong(&p->flags, &flags, new_flags))
             break;
-    }    
+    }
+    return 0;
+}
+
+
+
+int read_host_variable(host_variable p, void *buf, \
+        const size_t size, const size_t op_size)
+{
+#ifndef NDEBUG
+    _host_variable_should_wait = 1;
+#endif
+
+    /* add to the lock_cnt for the target buffer */
+    int target = __acquire_read_lock(p);
+     
+    /* copy the data */
+    memcpy(buf, p->data + target * size, op_size);    
+
 
 #ifndef NDEBUG
     _host_variable_should_wait = 0;
 #endif
 
-    return 0;
+    return __release_read_lock(p, target);
 }
 
 
@@ -274,7 +283,7 @@ int write_host_variable(host_variable p, const void *data, \
         old_target = (flags >> 56ull);
         if(atomic_load(&p->timestamp[old_target]) >= timestamp) {
             /* release the block we just acquire, cause we are not lastest */
-            __sync_fetch_and_and(&p->flags, ~(0xFull << target4));
+            atomic_fetch_and(&p->flags, ~(0xFull << target4));
             return 1;
         }
         /* construct the new_flags. Set the highest 56-63 bit to the new
@@ -292,6 +301,9 @@ int write_host_variable(host_variable p, const void *data, \
 
     return 0;
 }
+
+
+// void get_host_variable_timestamp(struct timespec *ret)
 
 
 #undef TIMESPEC_TO_UINT64

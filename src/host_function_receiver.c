@@ -240,6 +240,8 @@ __host_function_dispatcher(void *arg)
             }
         }
     }
+
+    return NULL;
 }
 
  
