@@ -2,23 +2,20 @@
 #   Just copy it and import
 
 # Load dependencies first
-import os, sys
+import os
+import sys
+import ctypes
+import pickle
 
-for module in ['ctypes', 'pickle']:
-    exec(f"try:\n\timport {module}\n"
-        + f"except ImportError as e:\n"
-        + f"\tprint(f\'Can not load {module}!\')\n"
-        + f"\tprint(e)\n"
-        + f"\tprint(f\'Try ```sudo apt install python3-{module}```\')")
-
+_module_dir = os.path.dirname(os.path.abspath(__file__))
 
 if os.name == 'posix':
-    if os.uname().sysname == 'Darwin':  # macOS
-        __lib_file = 'librobot_ipc.dylib'
-    else:  # Linux
-        __lib_file = 'librobot_ipc.so'
-else:  # Windows
-    __lib_file = 'librobot_ipc.dll'
+    if os.uname().sysname == 'Darwin': # macOS
+        __lib_file = os.path.join(_module_dir, 'librobot_ipc.dylib')
+    else: # Linux
+        __lib_file = os.path.join(_module_dir, 'librobot_ipc.so')
+else: # Windows
+    __lib_file = os.path.join(_module_dir, 'librobot_ipc.dll')
 
 
 try:

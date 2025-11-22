@@ -3,10 +3,10 @@
 #   Notice that python's varible are isolated from C except using ctypes 
 #   to guarantee the memory format.
 
-import robot_ipc
+from robot_ipc.robot_ipc import HostVariable
 import datetime
 
-a = robot_ipc.HostVariable("host_variable_py")
+a = HostVariable("host_variable_py")
 
 while True:
     a.data = datetime.datetime.now()

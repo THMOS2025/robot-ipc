@@ -49,3 +49,11 @@ cd build
 cmake -DBUILD_EXAMPLE=ON ..
 make
 ```
+
+* * * 
+
+### Python Installation 
+```bash
+cd robot_ipc
+pip install .
+```

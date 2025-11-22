@@ -1,7 +1,7 @@
-# read.py
+# write.py
 #   This is an example of how to use the robot_ipc python interface with C
 
-import robot_ipc
+from robot_ipc.robot_ipc import HostVariable
 import ctypes
 import time
 
@@ -18,13 +18,12 @@ class DataFormat(ctypes.Structure):
     ]
 
 print("[*] connect to variable host_variable")
-a = robot_ipc.HostVariable("host_variable_struct", data_format = DataFormat)
+a = HostVariable("host_variable_struct", data_format = DataFormat)
 
-while(True):
-    # prevent from misalign: you call multiple times if you do like:
-    #    print(f"[+] read: ( {a.data.x}, {a.data.y}, {a.data.appendix}, {a.data.appendix[16:]} )")
-    # these four value may not be within one frame. 
-    res_data = a.data
-    print(f"[+] read: ( {res_data.x}, {res_data.y}, {res_data.appendix})")
-    time.sleep(0.5)
+req_data = DataFormat()
+req_data.x = 200
+req_data.y = b"python"
+req_data.appendix = b"pypy"
+
+a.data = req_data
 

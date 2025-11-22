@@ -2,9 +2,9 @@
 
 import time
 import datetime
-import robot_ipc
+from robot_ipc.robot_ipc import HostFunctionCaller
 
-a = robot_ipc.HostFunctionCaller("a")
+a = HostFunctionCaller("a")
 while(True):
     a(datetime.datetime.now())
     print(f"call lantency = {a.get_response()}")
