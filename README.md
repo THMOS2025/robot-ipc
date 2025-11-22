@@ -53,6 +53,9 @@ make
 * * * 
 
 ### Python Installation 
+
+Install the Python binding after building the shared library as above:
+
 ```bash
 cd robot_ipc
 pip install .

@@ -19,13 +19,21 @@ def get_lib_file():
         return candidate
     raise FileNotFoundError(f"{candidate} not found. Please build the shared library first.")
 
-class CustomInstall(install):
+class RobotIPCInstall(install):
     def run(self):
         lib_file = get_lib_file()
         target_dir = os.path.join(self.install_lib, 'robot_ipc')
         self.mkpath(target_dir)
         shutil.copy2(lib_file, target_dir)
         super().run()
+
+
+"""
+Set up the robot_ipc python package, including copying the built shared library.
+The site-packages/robot_ipc/ directory will contain:
+    - robot_ipc.py
+    - librobot_ipc.so (or .dylib/.dll depending on platform)
+"""
 
 setup(
     name='robot_ipc',
@@ -36,5 +44,5 @@ setup(
     package_dir={'robot_ipc': 'python3'}, 
     package_data={'robot_ipc': ['librobot_ipc.so', 'librobot_ipc.dylib', 'librobot_ipc.dll']},
     include_package_data=True,
-    cmdclass={'install': CustomInstall},
+    cmdclass={'install': RobotIPCInstall},
 )

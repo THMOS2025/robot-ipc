@@ -4,11 +4,11 @@
 #   to guarantee the memory format.
 
 from robot_ipc.robot_ipc import HostVariable
-import datetime
+import time
 
-a = HostVariable("host_variable_py")
+a = HostVariable("host_variable_py", max_size=10000000)
 
 while True:
-    now = datetime.datetime.now()
-    dif = now - a.data
+    now = time.monotonic()
+    dif = now - a.data[0]
     print(dif)
