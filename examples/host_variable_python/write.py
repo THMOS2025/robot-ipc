@@ -7,9 +7,13 @@ from robot_ipc.robot_ipc import HostVariable
 import time
 import numpy as np
 
-a = HostVariable("host_variable_py", max_size=10000000)
-data = np.random.rand(1000, 1000)
 
 
-while True:
-    a.data = [time.monotonic(), data]
+
+if __name__ == "__main__":
+    a = HostVariable("host_variable_py", max_size=10000000)
+    data = np.random.rand(1000, 1000)
+
+
+    while True:
+        a.data = [time.monotonic(), data]

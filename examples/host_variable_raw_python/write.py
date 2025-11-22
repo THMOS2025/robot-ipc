@@ -17,13 +17,16 @@ class DataFormat(ctypes.Structure):
         ("appendix" , ctypes.c_char * 32) # just a placeholder for unfixed length structure
     ]
 
-print("[*] connect to variable host_variable")
-a = HostVariable("host_variable_struct", data_format = DataFormat)
 
-req_data = DataFormat()
-req_data.x = 200
-req_data.y = b"python"
-req_data.appendix = b"pypy"
 
-a.data = req_data
+if __name__ == "__main__":
+    print("[*] connect to variable host_variable")
+    a = HostVariable("host_variable_struct", data_format = DataFormat)
+
+    req_data = DataFormat()
+    req_data.x = 200
+    req_data.y = b"python"
+    req_data.appendix = b"pypy"
+
+    a.data = req_data
 

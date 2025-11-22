@@ -113,7 +113,7 @@ class HostVariable:
         robot_ipc_lib.read_host_variable(self.__p, \
                 self.__buffer, self.max_size, self.max_size)
         if self.data_format is not None:
-            return self.data_format.from_buffer(self.__buffer);
+            return self.data_format.from_buffer(self.__buffer)
         try:
             return pickle.loads(self.__buffer)
         except Exception as e:

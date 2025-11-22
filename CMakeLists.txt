@@ -38,6 +38,7 @@ install(TARGETS robot_ipc
     LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
 )
 
+target_compile_definitions(robot_ipc PRIVATE MY_MACRO)
 
 # whether to build example
 if(BUILD_EXAMPLE)
