@@ -38,28 +38,28 @@ try:
     # define host_function_caller apis
     robot_ipc_lib.link_host_function.argtypes = \
             [ctypes.c_char_p, ctypes.c_size_t, ctypes.c_size_t]
-    robot_ipc_lib.link_host_function.restypes = ctypes.c_void_p
+    robot_ipc_lib.link_host_function.restype = ctypes.c_void_p
     robot_ipc_lib.unlink_host_function.argtypes = [ctypes.c_void_p]
-    robot_ipc_lib.unlink_host_function.restypes = ctypes.c_int
+    robot_ipc_lib.unlink_host_function.restype = ctypes.c_int
     robot_ipc_lib.call_host_function.argtypes = \
             [ctypes.c_void_p, ctypes.c_void_p]
-    robot_ipc_lib.call_host_function.restypes = ctypes.c_int
+    robot_ipc_lib.call_host_function.restype = ctypes.c_int
     robot_ipc_lib.get_response_host_function.argtypes = \
             [ctypes.c_void_p, ctypes.c_void_p]
-    robot_ipc_lib.get_response_host_function.restypes = ctypes.c_int
+    robot_ipc_lib.get_response_host_function.restype = ctypes.c_int
 
     # define host_function_receiver apis
     callback_func_type = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p)
     robot_ipc_lib.create_host_function_dispatcher.argtypes = [ctypes.c_size_t]
-    robot_ipc_lib.create_host_function_dispatcher.restypes = ctypes.c_void_p
+    robot_ipc_lib.create_host_function_dispatcher.restype = ctypes.c_void_p
     robot_ipc_lib.delete_host_function_dispatcher.argtypes = [ctypes.c_void_p]
-    robot_ipc_lib.delete_host_function_dispatcher.restypes = ctypes.c_int
+    robot_ipc_lib.delete_host_function_dispatcher.restype = ctypes.c_int
     robot_ipc_lib.attach_host_function.argtypes = \
             [ctypes.c_void_p, ctypes.c_char_p, callback_func_type, \
             ctypes.c_size_t, ctypes.c_size_t]
-    robot_ipc_lib.attach_host_function.restypes = ctypes.c_int
+    robot_ipc_lib.attach_host_function.restype = ctypes.c_int
     robot_ipc_lib.start_host_function_dispatcher.argtypes = [ctypes.c_void_p]
-    robot_ipc_lib.start_host_function_dispatcher.restypes = ctypes.c_int
+    robot_ipc_lib.start_host_function_dispatcher.restype = ctypes.c_int
 
 except Exception as e:
     print(f"Can not load {__lib_file}: \n{e}")
