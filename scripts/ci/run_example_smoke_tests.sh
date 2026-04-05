@@ -73,6 +73,80 @@ run_host_variable_cpp() {
   fi
 }
 
+run_host_variable_integrity() {
+  local writer="${EXAMPLES_DIR}/host_variable_integrity_check/host_variable_integrity_test_writer"
+  local reader="${EXAMPLES_DIR}/host_variable_integrity_check/host_variable_integrity_test_reader"
+
+  if [[ ! -x "${writer}" || ! -x "${reader}" ]]; then
+    echo "[skip] host_variable integrity examples are not built"
+    return 0
+  fi
+
+  echo "[test] host_variable data integrity"
+  cleanup_ipc_artifacts
+  rm -f /dev/shm/test || true
+
+  timeout 8s "${writer}" >/tmp/robot_ipc_integrity_writer.log 2>&1 &
+  local writer_pid=$!
+  sleep 0.3
+
+  set +e
+  timeout 5s stdbuf -oL -eL "${reader}" >/tmp/robot_ipc_integrity_reader.log 2>&1
+  local reader_rc=$?
+  set -e
+
+  wait "${writer_pid}" || true
+
+  if [[ ${reader_rc} -ne 0 && ${reader_rc} -ne 124 ]]; then
+    echo "integrity reader exited with ${reader_rc}"
+    cat /tmp/robot_ipc_integrity_reader.log
+    return 1
+  fi
+
+  if grep -q "chksum failed" /tmp/robot_ipc_integrity_reader.log; then
+    echo "integrity check reported checksum failure"
+    cat /tmp/robot_ipc_integrity_reader.log
+    return 1
+  fi
+}
+
+run_host_variable_latency() {
+  local writer="${EXAMPLES_DIR}/host_variable_latency_test/host_variable_latency_test_writer"
+  local reader="${EXAMPLES_DIR}/host_variable_latency_test/host_variable_latency_test_reader"
+
+  if [[ ! -x "${writer}" || ! -x "${reader}" ]]; then
+    echo "[skip] host_variable latency examples are not built"
+    return 0
+  fi
+
+  echo "[test] host_variable latency"
+  cleanup_ipc_artifacts
+  rm -f /dev/shm/latency_test || true
+
+  timeout 8s "${writer}" >/tmp/robot_ipc_latency_writer.log 2>&1 &
+  local writer_pid=$!
+  sleep 0.2
+
+  set +e
+  timeout 5s stdbuf -oL -eL "${reader}" >/tmp/robot_ipc_latency_reader.log 2>&1
+  local reader_rc=$?
+  set -e
+
+  wait "${writer_pid}" || true
+
+  if [[ ${reader_rc} -ne 0 && ${reader_rc} -ne 124 ]]; then
+    echo "latency reader exited with ${reader_rc}"
+    cat /tmp/robot_ipc_latency_reader.log
+    return 1
+  fi
+
+  if ! grep -q "ipc delay" /tmp/robot_ipc_latency_reader.log; then
+    echo "latency reader did not produce latency output"
+    cat /tmp/robot_ipc_latency_reader.log
+    return 1
+  fi
+}
+
 run_host_function_c() {
   local receiver="${EXAMPLES_DIR}/host_function/host_function_receiver_c"
   local caller="${EXAMPLES_DIR}/host_function/host_function_caller_c"
@@ -128,6 +202,8 @@ run_host_function_cpp_receiver_with_c_caller() {
 echo "Running robot_ipc example smoke tests"
 run_host_variable_c
 run_host_variable_cpp
+run_host_variable_integrity
+run_host_variable_latency
 run_host_function_c
 run_host_function_cpp_receiver_with_c_caller
 echo "All smoke tests passed"
