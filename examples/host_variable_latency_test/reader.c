@@ -23,7 +23,9 @@ int main(int argc, char **argv)
     struct timespec ts, ns, ts1, ns1;
     int64_t diff, diff1;
 
-    char *ptr = malloc(PAYLOAD_SIZE);
+    char *ptr = malloc(sizeof(struct data_pack));
+    if(ptr == NULL)
+        return -1;
 
     while(1) {
         read_host_variable(x, &data, sizeof(struct data_pack), sizeof(struct data_pack));
@@ -44,4 +46,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-

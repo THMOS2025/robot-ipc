@@ -19,7 +19,7 @@ writer_pid=$!
 sleep 0.2
 
 set +e
-timeout 5s stdbuf -oL -eL "${reader}" >"${ROBOT_IPC_LOG_DIR}/hv_latency_reader.log" 2>&1
+timeout 5s "${reader}" >"${ROBOT_IPC_LOG_DIR}/hv_latency_reader.log" 2>&1
 reader_rc=$?
 set -e
 
