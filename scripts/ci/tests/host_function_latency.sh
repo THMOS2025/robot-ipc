@@ -15,7 +15,7 @@ print_test "host_function latency"
 cleanup_ipc_artifacts
 
 set +e
-timeout 12s stdbuf -oL -eL "${receiver}" >"${ROBOT_IPC_LOG_DIR}/hf_latency_receiver.log" 2>&1 &
+timeout 12s "${receiver}" >"${ROBOT_IPC_LOG_DIR}/hf_latency_receiver.log" 2>&1 &
 receiver_pid=$!
 sleep 0.3
 
