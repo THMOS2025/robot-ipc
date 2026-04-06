@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <sys/stat.h>
 #include <sys/epoll.h>
@@ -27,13 +28,26 @@ struct _s_host_function_dispatcher {
     /* functions to be dispatcher */
     size_t cnt_func;
     int *req_fd, *res_fd;
-    host_function *foo;
+    host_function_ex *foo;
+    void **foo_user_data;
+    uint8_t *foo_owns_user_data;
     size_t *sz_arg, *sz_ret;
+};
+
+struct _s_legacy_host_function_context {
+    host_function foo;
 };
 
 
 /* private functions the entry of pthread  */
 static void *__host_function_dispatcher(void *arg);
+
+static void *_legacy_host_function_adapter(const void *args, void *user_data)
+{
+    struct _s_legacy_host_function_context *ctx =
+            (struct _s_legacy_host_function_context *)user_data;
+    return ctx->foo(args);
+}
 
 
 host_function_dispatcher 
@@ -63,7 +77,9 @@ create_host_function_dispatcher(const size_t n)
     p->cnt_func = 0;
     p->req_fd = malloc(n * sizeof(int));
     p->res_fd = malloc(n * sizeof(int));
-    p->foo = malloc(n * sizeof(host_function));
+    p->foo = malloc(n * sizeof(host_function_ex));
+    p->foo_user_data = malloc(n * sizeof(void *));
+    p->foo_owns_user_data = malloc(n * sizeof(uint8_t));
     p->sz_arg = malloc(n * sizeof(size_t));
     p->sz_ret = malloc(n * sizeof(size_t));
     return p;
@@ -95,12 +111,16 @@ delete_host_function_dispatcher(host_function_dispatcher p)
     for(size_t i = 0; i < p->cnt_func; ++i) {
         ret |= close(p->req_fd[i]);
         ret |= close(p->res_fd[i]);
+        if(p->foo_owns_user_data[i] && p->foo_user_data[i])
+            free(p->foo_user_data[i]);
     }
     
     /* free the space */
     free(p->req_fd);
     free(p->res_fd);
     free(p->foo);
+    free(p->foo_user_data);
+    free(p->foo_owns_user_data);
     free(p->sz_arg);
     free(p->sz_ret);
     free(p);
@@ -124,8 +144,8 @@ _try_to_open_pipe(const char *name)
     
 
 int
-attach_host_function(host_function_dispatcher p, \
-        const char *name, host_function foo, \
+attach_host_function_ex(host_function_dispatcher p, \
+        const char *name, host_function_ex foo, void *user_data, \
         const size_t sz_arg, const size_t sz_ret)
 {
     int err_code = 0;
@@ -133,6 +153,8 @@ attach_host_function(host_function_dispatcher p, \
     p->sz_arg[id] = sz_arg;
     p->sz_ret[id] = sz_ret;
     p->foo[id] = foo;
+    p->foo_user_data[id] = user_data;
+    p->foo_owns_user_data[id] = 0;
 
     /* make sure the path exist */
     if (mkdir(PIPE_NAME_PREFIX, 0700) != 0 && errno != EEXIST) {
@@ -155,7 +177,7 @@ attach_host_function(host_function_dispatcher p, \
 
     /* listening to this pipe in the epoll */
     struct epoll_event ev = {
-        .events = EPOLLIN, 
+        .events = EPOLLIN,
         .data.u64 = id,
     };
     if(epoll_ctl(p->epoll_fd, EPOLL_CTL_ADD, p->req_fd[id], &ev) == -1) {
@@ -173,6 +195,32 @@ FAILED_PIPE_REQ:
 FAILED_MKDIR:
     --p->cnt_func;
     return err_code;
+}
+
+
+int
+attach_host_function(host_function_dispatcher p, \
+        const char *name, host_function foo, \
+        const size_t sz_arg, const size_t sz_ret)
+{
+    int ret;
+    int id;
+    struct _s_legacy_host_function_context *ctx =
+            malloc(sizeof(struct _s_legacy_host_function_context));
+    if(!ctx)
+        return -4;
+
+    ctx->foo = foo;
+    ret = attach_host_function_ex(
+            p, name, _legacy_host_function_adapter, ctx, sz_arg, sz_ret);
+    if(ret) {
+        free(ctx);
+        return ret;
+    }
+
+    id = p->cnt_func - 1;
+    p->foo_owns_user_data[id] = 1;
+    return 0;
 }
 
 
@@ -225,11 +273,12 @@ __host_function_dispatcher(void *arg)
                 bytes_read = read(p->req_fd[id], arg_buffer, p->sz_arg[id]);
                 if(bytes_read != p->sz_arg[id]) {
                     /* Something wrong happened */
+                    free(arg_buffer);
                     continue;
                 }
 
                 /* Call the funtion blockingly */
-                void *ret_buffer = p->foo[id](arg_buffer);
+                void *ret_buffer = p->foo[id](arg_buffer, p->foo_user_data[id]);
 
                 /* Write to the response pipe if there is returning value */
                 if(ret_buffer != NULL && p->sz_ret[id]) {
@@ -237,6 +286,8 @@ __host_function_dispatcher(void *arg)
                             p->sz_ret[id])
                         ; /* some error may ocurr, but I don't know what to do */
                 }
+
+                free(arg_buffer);
             }
         }
     }

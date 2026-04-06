@@ -162,14 +162,27 @@ make
 
 * * * 
 
-### Python Installation 
+### Python Installation
 
-Install the Python binding after building the shared library as above:
+Python bindings are now implemented with **pybind11** and can be installed directly from git.
 
 ```bash
-cd robot_ipc
-pip install .
+uv add git+https://github.com/<your-org>/robot-ipc.git
 ```
+
+Or with pip:
+
+```bash
+pip install git+https://github.com/<your-org>/robot-ipc.git
+```
+
+For local development:
+
+```bash
+pip install -e .
+```
+
+`HostVariable` and `HostFunctionCaller/Dispatcher` support `ctypes.Structure`-based data formats for C/C++ compatible fixed layouts.
 
 * * *
 
