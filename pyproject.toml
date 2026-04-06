@@ -1,0 +1,21 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "pybind11>=2.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "robot_ipc"
+version = "0.2.0"
+description = "Low-latency local IPC framework with C/C++ and Python bindings"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "robot_ipc contributors" }
+]
+
+[tool.scikit-build]
+wheel.packages = ["src/robot_ipc"]
+cmake.verbose = true
+
+[tool.scikit-build.cmake.define]
+BUILD_PYTHON_BINDINGS = "ON"
+BUILD_EXAMPLE = "OFF"

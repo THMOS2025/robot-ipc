@@ -6,21 +6,29 @@ Python is flexible without a fixed memory layout length, even with pickle. Howev
 
 ### Installation
 
-1.  Clone this project
-2.  `mkdir build && cd build`
-3.  `cmake .. && sudo make install -j4`
-4.  Copy (or symbol link) file python3/robot_ipc.py to your project
-5.  Make sure `ctypes` and `pickle` are installed in your python environment. They are installed by default.
+Install from git (recommended):
+
+```bash
+uv add git+https://github.com/<your-org>/robot-ipc.git
+```
+
+or:
+
+```bash
+pip install git+https://github.com/<your-org>/robot-ipc.git
+```
 
 * * *
 
 ### Host Variable
 
-- `class HostVariable(name: str, max_size: int = 4096)`
+- `class HostVariable(name: str, max_size: int = 4096, data_format: ctypes.Structure | None = None)`
     - name: A string that identify the variable
     - max_size: The size of the variable. The smaller the size is, the faster it will be. But your python objects have to be smaller than the max size after pickled.
 - `HostVariable.data`
     - Take it as a simple local python variable. Whenever you write to it, the data will be synced host-wide.
+
+When `data_format` is provided, `max_size` is inferred from `ctypes.sizeof(data_format)` and data is transferred as raw bytes compatible with C/C++ packed structs.
 
 > ### Note - the lock
 > 
@@ -30,12 +38,14 @@ Python is flexible without a fixed memory layout length, even with pickle. Howev
 
 ### Host Function Caller
 
-- `class HostFunctionCaller(name: str, max_sz_args: int = 4096, max_sz_ret: int = 4096)`
+- `class HostFunctionCaller(name: str, max_arg_size: int = 4096, max_ret_size: int = 4096, arg_format=None, ret_format=None)`
     - name: A string that identity the variable
     - max_sz_args: maximum size of arguments passed ( after pickled )
     - max_sz_ret: maximum size of response returned ( after pickled )
 - `__call__(*args, **kwargs)`: Just call the instance as a normal function
 - `.get_response()`: Wait for the response and return it.
+
+When `arg_format` / `ret_format` are set to `ctypes.Structure` classes, host-function payloads use C-compatible fixed layouts instead of pickle.
 
 > ### Note - the response
 > 
@@ -51,7 +61,7 @@ Python is flexible without a fixed memory layout length, even with pickle. Howev
 
 - `class HostFunctionDispatcher(max_func_count: int)`
     - max_func_count: How many functions you are going to add into this dispatcher.
-- `.add(name: str, foo: function, max_sz_args = 4096, max_sz_ret = 4096)`
+- `.attach(name: str, foo: function, max_sz_args = 4096, max_sz_ret = 4096, arg_format=None, ret_format=None)`
     - name: The identify of a host function.
     - foo: The callback function.
     - max_sz_arg: maximum size of arguments passed ( after pickled )
@@ -63,6 +73,6 @@ Python is flexible without a fixed memory layout length, even with pickle. Howev
 
 - `.start()`
     - Start the dispatcher as a daemon thread. 
-    - Able to add another function (`.add()`) after started, but not full tested and may fail. 
+    - Able to attach another function (`.attach()`) after started, but not full tested and may fail. 
 - `__del()__`
     - The dispatcher stops working when the instance is garbage recollected.

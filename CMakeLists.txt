@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(robot_ipc C CXX)
 
+include(GNUInstallDirs)
+
 # options
 option(BUILD_EXAMPLE    "Build the examples"        OFF)
 option(BUILD_C          "Build the cpp interface"   ON)
 option(BUILD_CPP        "Build the cpp interface"   ON)
+option(BUILD_PYTHON_BINDINGS "Build pybind11 Python bindings" OFF)
 
 # set default multi-thread 
 if(NOT DEFINED CMAKE_BUILD_PARALLEL_LEVEL)
@@ -25,6 +28,7 @@ endif()
 # search for cpp source files
 if(BUILD_CPP)
     file(GLOB CPP_SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+    list(FILTER CPP_SRC_FILES EXCLUDE REGEX "python_bindings\\.cpp$")
 endif()
 
 
@@ -32,10 +36,10 @@ endif()
 add_library(robot_ipc SHARED ${C_SRC_FILES} ${CPP_SRC_FILES})
 target_include_directories(robot_ipc
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE ${CMAKE_CURRENT_SORUCE_DIR}/src)
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(robot_ipc PRIVATE cxx_std_17 c_std_11)
 install(TARGETS robot_ipc
-    LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/lib"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 
 target_compile_definitions(robot_ipc PRIVATE MY_MACRO)
@@ -43,4 +47,19 @@ target_compile_definitions(robot_ipc PRIVATE MY_MACRO)
 # whether to build example
 if(BUILD_EXAMPLE)
     add_subdirectory(examples)
+endif()
+
+if(BUILD_PYTHON_BINDINGS)
+    find_package(pybind11 CONFIG REQUIRED)
+
+    pybind11_add_module(_core src/python_bindings.cpp)
+    target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(_core PRIVATE robot_ipc)
+
+    if(UNIX AND NOT APPLE)
+        set_target_properties(_core PROPERTIES INSTALL_RPATH "$ORIGIN")
+    endif()
+
+    install(TARGETS _core LIBRARY DESTINATION robot_ipc)
+    install(TARGETS robot_ipc LIBRARY DESTINATION robot_ipc)
 endif()
