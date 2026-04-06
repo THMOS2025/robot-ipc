@@ -8,3 +8,5 @@ compile_commands.json
 build/
 build-*/
 *.egg-info/
+.cache/
+.ruff_cache/
