@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(robot_ipc C CXX)
 
 include(GNUInstallDirs)
+find_package(Threads REQUIRED)
 
 # options
 option(BUILD_EXAMPLE    "Build the examples"        OFF)
@@ -38,6 +39,9 @@ target_include_directories(robot_ipc
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_features(robot_ipc PRIVATE cxx_std_17 c_std_11)
+target_link_libraries(robot_ipc
+    PUBLIC Threads::Threads
+    PRIVATE $<$<PLATFORM_ID:Linux>:rt>)
 install(TARGETS robot_ipc
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
